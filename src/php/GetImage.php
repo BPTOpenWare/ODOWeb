@@ -26,9 +26,9 @@ if((!isset($_GET["ImgID"])) && (!isset($_GET["Name"]))) {
 
 
 define("DBIPADD", "127.0.0.1");
-define("DBUNAME", "ODOWebtest");
-define("DBPWORD", "ODOWebtest");
-define("DBNAME", "OrcimWeb");
+define("DBUNAME", "TESTACCT");
+define("DBPWORD", "testacct");
+define("DBNAME", "BPTPOINT");
 
 
 

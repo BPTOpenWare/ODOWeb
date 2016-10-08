@@ -2663,36 +2663,12 @@ class ODOLogging {
     *********************************************/
     private function EmailMessageObject($EmailObj) {
 
-    	$ch = curl_init();
-    	
-    	$curlPost = "pg=rloggeribmbluemix&emailto=" . $EmailObj->to . "&emailsubject=";
-    	$curlPost .= $EmailObj->subject . "&emailmessage=" . $EmailObj->message . "&emailheaders=" . $EmailObj->headers;
-    	$curlPost .= "&ourKey=" . BLUEMIXMSGKEY;
-    	
-    	curl_setopt($ch, CURLOPT_URL,"http://www.bluffpointtech.com/index.php");
-    	curl_setopt($ch, CURLOPT_POST, 1);
-    	curl_setopt($ch, CURLOPT_POSTFIELDS,$curlPost);
-    	
-    	// in real life you should use something like:
-    	curl_setopt($ch, CURLOPT_POSTFIELDS,
-    			http_build_query(array('pg' => 'rloggeribmbluemix', 'testvar1' => 'value1')));
-    	
-    	// receive server response ...
-    	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    	
-    	$server_output = curl_exec ($ch);
-    	
-    	curl_close ($ch);
-    	 
-    	if(!$server_output) {
-    		$Comment = "Error dropping an e-mail to bpt" . $curlPost;
-    		
-    		$this->LogEvent("EMAILERROR", $Comment, 100);
-    		
-    		return false;
-    	}
-    	
-		return true;
+        if(mail($EmailObj->to, $EmailObj->subject, $EmailObj->message, $EmailObj->headers)) {
+            return true;
+        } else {
+            return false;
+        }
+
     }
 
     /*******************************************
