@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="ODOWeb" default="dist">
+
+	<property name="builddir" value="./build" override="true" />
+	
+	<!-- Fileset for all PHP src files-->
+	<fileset dir="." id="allphp">
+		<include name="src/php/*.php" />
+	</fileset>
+	
+	<!-- Fileset for all JS src files-->
+	<fileset dir="." id="alljs">
+		<include name="src/JavaScript/*.js" />
+	</fileset>
+	
+	
+    <!-- ============================================  -->
+    <!-- Target: prepare                               -->
+    <!-- ============================================  -->
+    <target name="prepare">
+        <echo msg="Making directory ./build" />
+        <mkdir dir="./build" />
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: delete                                -->
+    <!-- ============================================  -->
+	<target name="clean">
+		<echo msg="Deleting build dir ./build" />
+		<delete dir="./build"/>
+	</target>
+	
+    <!-- ============================================  -->
+    <!-- Target: build                                 -->
+    <!-- ============================================  -->
+    <target name="build" depends="prepare">
+        <echo msg="Copying files to build directory..." />
+
+    	<copy todir="${builddir}">
+    		<fileset refid="allphp" />
+    		<fileset refid="alljs" />
+    	</copy>
+    	
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: sonar                                 -->
+    <!-- ============================================ 
+	<target name="sonar">
+		<exec command="sonar-runner" dir="."/>
+	</target>
+	 -->
+	
+	<!-- ============================================  -->
+	<!-- Target: BuildODOWebConfig                     --> 
+	<!-- ============================================ 
+	<target name="BuildODOWebConfig">
+		<odowebannotation builddir="./build/src/php/CurrentArtist.php"/>
+	</target>
+	 -->
+	
+    <!-- ============================================  -->
+    <!-- (DEFAULT)  Target: dist                       --> 
+    <!-- ============================================  -->
+    <target name="dist" depends="build">
+        <echo msg="Creating archive..." />
+
+    	<pharpackage
+    	  destfile="./build/ODOWeb.phar"
+    	  basedir="./"
+    	  compression="bzip2">
+    	  <fileset dir="./build">
+    	    <include name="**/**" />
+    	  </fileset>
+    	  <metadata>
+    	    <element name="version" value="1.0" />
+    	    <element name="authors">
+    	      <element name="Nic Thomas">
+    	        <element name="e-mail" value="customers@bluffpointtech.com" />
+    	      </element>
+    	    </element>
+    	  </metadata>
+    	</pharpackage>
+    	
+        <echo msg="Files copied and compressed in build directory OK!" />
+    	
+    	<apigen
+    	  source="./src/php/"
+    	  destination="Docs/api"
+    	  exclude="*/tests/*"
+    	  title="ODOWeb Documentation"
+    	  deprecated="true"
+    	  todo="true"/>
+    </target>
+</project>
