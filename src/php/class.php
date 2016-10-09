@@ -1921,7 +1921,8 @@ class ODOUser {
 
 				$_SESSION = array();
 				session_destroy();
-				session_regenerate_id(true);
+				session_start();
+				session_regenerate_id(false);
 
 				//load system objects
 				$_SESSION["ODOSessionO"] = new ODOSession;
