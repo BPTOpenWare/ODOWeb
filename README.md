@@ -14,9 +14,9 @@
 
 ## How to Install
 <ol>
-<li><B>wget https://github.com/BPTOpenWare/ODOWeb/archive/master.zip</B></li>
+<li><B>wget https://github.com/BPTOpenWare/ODOWeb/archive/3.0.tar.gz</B></li>
 <BR>
-<li><B>unzip master.zip</B></li>
+<li><B>tar -xvf 3.0.tar.gz</B></li>
 <BR>
 <li><B>cp -R ODOWeb-master/src/images /path/to/your/apache/htdocs/images</B></li>
 <BR>
