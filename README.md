@@ -40,6 +40,13 @@
 <BR>
 <li><B>Update the class.php DB connection info. Search for dbipadd and update the dbpword, dbuname to the username you created above.</B></li>
 <BR>
+<li><B>Update the GetFile.php DB connection info. Search for dbipadd and update the dbpword, dbuname to the username you created above.</B></li>
+<BR>
+<li><B>Update the GetImage.php DB connection info. Search for dbipadd and update the dbpword, dbuname to the username you created above.</B></li>
+<br>
+<li><B>Update the NoSpam.php DB connection info. Search for dbipadd and update the dbpword, dbuname to the username you created above.</B></li>
+<BR>
 <li><B>If you are going to use mcrypt you should update the salts located in ODOUtil class and ODOUser class in class.php. Search for aesKey in ODOUtil and update it to a new key of the same length. It is defined in the wakeup and in the constructor to avoid recording the key in session data. You must update both. Search for the defined aesKey in ODOUser class and update it. It also is defind in the wakeup and in the constructor methods. Search for SHA256h defined in ODOUser and update everything AFTER the $5$rounds=5000$ portion of the salt. It is also defind in the wakeup and in the constructor methods. Search for SHA512h defined in ODOUser and update everything after the $6$rounds=5000$ portion of the salt. It is also located in the wakeup and constructor methods.</B></li>  
-
+<BR><BR>
+<li><B>You should be setup now! Visit the server's address and login with username: admin password: admin . Obviously you should change your password as soon as you login.</B></li>
 </ol>
