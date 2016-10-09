@@ -770,7 +770,7 @@ class ODOSession {
 		}
 		unset($this->UserObjectArray);
 		//echo count($this->SerializedObjects);
-		return( array_keys( get_object_vars( &$this ) ) );
+		return( array_keys( get_object_vars( $this ) ) );
 	}
 
 
@@ -2524,7 +2524,7 @@ class ODOUser {
 		$this->SHA256h = "";
 		$this->SHA512h = "";
 		$this->aesKey = "";
-		return( array_keys( get_object_vars( &$this ) ) );
+		return( array_keys( get_object_vars( $this ) ) );
 	}
 
 	function __wakeup() {
@@ -2729,7 +2729,7 @@ class ODOLogging {
         unset($this->logQueue);
         unset($this->emailQueue);
 
-		return( array_keys( get_object_vars( &$this ) ) );
+		return( array_keys( get_object_vars( $this ) ) );
 
     }
 
@@ -2968,7 +2968,7 @@ class ODOPage {
 		$this->ScriptToRun = "";
 		$this->IsDynamic = 0;
 		$this->IsAdmin = 0;
-		return( array_keys( get_object_vars( &$this ) ) );
+		return( array_keys( get_object_vars( $this ) ) );
 	}
 
 	function __wakeup() {
@@ -3204,7 +3204,7 @@ class ODOUtil {
 
 	function __sleep() {
 		$this->aesKey = "";
-		return( array_keys( get_object_vars( &$this ) ) );
+		return( array_keys( get_object_vars( $this ) ) );
 	}
 
 	function __wakeup() {
@@ -3241,7 +3241,7 @@ class EncryptedData {
 			unset($decArray);
 			$this->decArray = array();
 		}
-		return( array_keys( get_object_vars( &$this ) ) );
+		return( array_keys( get_object_vars( $this ) ) );
 	}
 }
 
