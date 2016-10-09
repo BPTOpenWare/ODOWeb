@@ -37,4 +37,9 @@
 <li><B>mysql -u USERNAME -p BPTPOINT < ODOWeb-master/db/ODOWebv3.sql</B></li>
 <BR>
 <li><B>Change the group owner on the newly created files to your apache2 server group. On some systems this is www-data. chgrp -R www-data /path/to/your/apache/htdocs/*</B></li>
+<BR>
+<li><B>Update the class.php DB connection info. Search for dbipadd and update the dbpword, dbuname to the username you created above.</B></li>
+<BR>
+<li><B>If you are going to use mcrypt you should update the salts located in ODOUtil class and ODOUser class in class.php. Search for aesKey in ODOUtil and update it to a new key of the same length. It is defined in the wakeup and in the constructor to avoid recording the key in session data. You must update both. Search for the defined aesKey in ODOUser class and update it. It also is defind in the wakeup and in the constructor methods. Search for SHA256h defined in ODOUser and update everything AFTER the $5$rounds=5000$ portion of the salt. It is also defind in the wakeup and in the constructor methods. Search for SHA512h defined in ODOUser and update everything after the $6$rounds=5000$ portion of the salt. It is also located in the wakeup and constructor methods.</B></li>  
+
 </ol>

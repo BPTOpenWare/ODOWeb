@@ -705,7 +705,7 @@ class ODOSession {
 				$ModArray[$row["ModID"]] = 1;
 
 				//next Load Object code
-				$query2 = "select Objects.ObjID, Objects.CodeSegID, Objects.fnName, Objects.Code, Objects.IsHeader, Objects.IsFooter, ODOObjectACL.GID, ODOUserGID.UID from Objects, ODOObjectACL, ODOUserGID WHERE ((ODOUserGID.UID = " . $GLOBALS['globalref'][3]->getUID() . ") AND (ODOUserGID.GID = ODOObjectACL.GID) AND (ODOObjectACL.CodeSegID = Objects.CodeSegID) AND (Objects.ObjID = " . $row["ObjID"] . ")) Group By CodeSegID";
+				$query2 = "select Objects.ObjID, Objects.CodeSegID, Objects.fnName, Objects.Code, Objects.IsHeader, Objects.IsFooter, ANY_VALUE(ODOObjectACL.GID), ODOUserGID.UID from Objects, ODOObjectACL, ODOUserGID WHERE ((ODOUserGID.UID = " . $GLOBALS['globalref'][3]->getUID() . ") AND (ODOUserGID.GID = ODOObjectACL.GID) AND (ODOObjectACL.CodeSegID = Objects.CodeSegID) AND (Objects.ObjID = " . $row["ObjID"] . ")) Group By CodeSegID";
 
 
 
@@ -801,9 +801,9 @@ class ODODB {
 
 	//DB connection info
 	private $dbipadd = "127.0.0.1";
-	private $dbuname = "ODOWebtest";
-	private $dbpword = "ODOWebtest";
-	private $dbname = "OrcimWeb";
+	private $dbuname = "TESTACCT";
+	private $dbpword = "testacct";
+	private $dbname = "BPTPOINT";
 
     private $inTransaction = false;
 
