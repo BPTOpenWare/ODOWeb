@@ -18,13 +18,13 @@
 <BR>
 <li><B>tar -xvf 3.0.tar.gz</B></li>
 <BR>
-<li><B>cp -R ODOWeb-master/src/images /path/to/your/apache/htdocs/images</B></li>
+<li><B>cp -R ODOWeb-3.0/src/images /path/to/your/apache/htdocs/images</B></li>
 <BR>
-<li><B>cp -R ODOWeb-master/src/css /path/to/your/apache/htdocs/css</B></li>
+<li><B>cp -R ODOWeb-3.0/src/css /path/to/your/apache/htdocs/css</B></li>
 <BR>
-<li><B>cp -R ODOWeb-master/src/JavaScript /path/to/your/apache/htdocs/js</B></li>
+<li><B>cp -R ODOWeb-3.0/src/JavaScript /path/to/your/apache/htdocs/js</B></li>
 <BR>
-<li><B>cp -R ODOWeb-master/src/php/*.php /path/to/your/apache/htdocs/</B></li> - You do not need the Objects or Pages folders as they are loaded into the database.
+<li><B>cp -R ODOWeb-3.0/src/php/*.php /path/to/your/apache/htdocs/</B></li> - You do not need the Objects or Pages folders as they are loaded into the database.
 <BR>
 <li><B>mkdir /path/to/your/apache/htdocs/mobile</B></li>
 <BR>
@@ -34,7 +34,7 @@
 <BR>
 <li><B>You should create a new mysql username and password for the new BPTPOINT database. This is not covered here.</B></li>
 <BR>
-<li><B>mysql -u USERNAME -p BPTPOINT < ODOWeb-master/db/ODOWebv3.sql</B></li>
+<li><B>mysql -u USERNAME -p BPTPOINT < ODOWeb-3.0/db/ODOWebv3.sql</B></li>
 <BR>
 <li><B>Change the group owner on the newly created files to your apache2 server group. On some systems this is www-data. chgrp -R www-data /path/to/your/apache/htdocs/*</B></li>
 <BR>
