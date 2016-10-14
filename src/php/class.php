@@ -2752,7 +2752,9 @@ class ODOError {
 	function __construct() {
 		$GLOBALS['globalref'][5] =& $this;
 
-		define(E_ODOWEB_APPERROR, -1);
+		if(!defined(E_ODOWEB_APPERROR)) {
+			define(E_ODOWEB_APPERROR, -1);
+		}
 
 		$this->oldErrorHandler = set_error_handler(array($this, 'ODOErrorHandler'));
         $this->ajaxResponse = false;
@@ -2919,7 +2921,11 @@ class ODOError {
 
 	function __wakeup() {
 		$GLOBALS['globalref'][5] =& $this;
-		define(E_ODOWEB_APPERROR, -1);
+		
+		if(!defined(E_ODOWEB_APPERROR)) {
+			define(E_ODOWEB_APPERROR, -1);
+		}
+		
 		$oldErrorHandler = set_error_handler(array($this, 'ODOErrorHandler'));
 		$this->ajaxResponse = false;
 
