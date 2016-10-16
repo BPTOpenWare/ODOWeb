@@ -2423,7 +2423,7 @@ class ODOUser {
 
 		$RValue .= "<div id=\"loginsubmit\">";
 
-		if((defined(JSVALIDATELOGIN))&&(JSVALIDATELOGIN == 1)) {
+		if((defined("JSVALIDATELOGIN"))&&(JSVALIDATELOGIN == 1)) {
 			$RValue .= "<INPUT type=\"button\" id=\"loginsubmit\" name=\"login\" value=\"login\" onclick=\"loginvalidate();\">";
 		} else {
 			$RValue .= "<INPUT type=\"submit\" id=\"loginsubmit\" name=\"login\" value=\"login\">";
@@ -2464,7 +2464,7 @@ class ODOUser {
 		//new login pass confirm
 		$RValue .= "<div id=\"loginnewpassconfirmdiv\"><span id=\"loginnewpassconfirmlabel\" class=\"loginlabel\">Confirm New:</span><span id=\"loginnewpassconfirm\" class=\"logintext\"><INPUT type=\"password\" id=\"loginnewpassconfirmtext\" name=\"ConfirmPword\" size=\"12\" maxlength=\"10\"></span></div>\n<div id=\"loginsubmit\">";
 
-		if((defined(JSVALIDATELOGIN))&&(JSVALIDATELOGIN == 1)) {
+		if((defined("JSVALIDATELOGIN"))&&(JSVALIDATELOGIN == 1)) {
 			$RValue .= "<INPUT type=\"button\" id=\"loginsubmit\" name=\"login\" value=\"login\" onclick=\"loginvalidate();\">";
 		} else {
 			$RValue .= "<INPUT type=\"submit\" id=\"loginsubmit\" name=\"login\" value=\"login\">";
@@ -2499,7 +2499,7 @@ class ODOUser {
 
 			$RValue .= "<input type=\"hidden\" id=\"loginusertext\" name=\"UNAME\" value=\"" . htmlentities($username) . "\">" . htmlentities($username) . "</span></div>\n<div id=\"loginresetqdiv\"><span id=\"loginresetqlabel\" class=\"loginlabel\">Reset Question: </span><span id=\"loginresetq\" class=\"logintext\">" . $rquestion . "</span></div>\n<div id=\"loginresetadiv\"><span id=\"loginresetalabel\" class=\"loginlabel\">Reset Answer: </span><span id=\"loginreseta\" class=\"logintext\"><INPUT type=\"text\" id=\"loginresetatext\" name=\"ResetA\" size=\"25\" maxlength=\"100\"></span></div>\n<div id=\"loginsubmit\">";
 
-			if((defined(JSVALIDATELOGIN))&&(JSVALIDATELOGIN == 1)) {
+			if((defined("JSVALIDATELOGIN"))&&(JSVALIDATELOGIN == 1)) {
 				$RValue .= "<INPUT type=\"button\" id=\"loginsubmit\" name=\"change\" value=\"change\" onclick=\"loginvalidate();\">";
 			} else {
 				$RValue .= "<INPUT type=\"submit\" id=\"loginsubmit\" name=\"change\" value=\"change\">";
@@ -2509,7 +2509,7 @@ class ODOUser {
 
 			$RValue .= "<input type=\"text\" id=\"loginusertext\" name=\"UNAME\" size=\"12\" maxlength=\"20\"></span></div>\n<div id=\"loginsubmit\">";
 
-			if((defined(JSVALIDATELOGIN))&&(JSVALIDATELOGIN == 1)) {
+			if((defined("JSVALIDATELOGIN"))&&(JSVALIDATELOGIN == 1)) {
 				$RValue .= "<INPUT type=\"button\" id=\"loginsubmit\" name=\"GetResetQuestion\" value=\"Get Reset Question\" onclick=\"loginvalidate();\">";
 			} else {
 				$RValue .= "<INPUT type=\"submit\" id=\"loginsubmit\" name=\"GetResetQuestion\" value=\"Get Reset Question\">";
@@ -2752,8 +2752,8 @@ class ODOError {
 	function __construct() {
 		$GLOBALS['globalref'][5] =& $this;
 
-		if(!defined(E_ODOWEB_APPERROR)) {
-			define(E_ODOWEB_APPERROR, -1);
+		if(!defined("E_ODOWEB_APPERROR")) {
+			define("E_ODOWEB_APPERROR", -1);
 		}
 
 		$this->oldErrorHandler = set_error_handler(array($this, 'ODOErrorHandler'));
@@ -2922,8 +2922,8 @@ class ODOError {
 	function __wakeup() {
 		$GLOBALS['globalref'][5] =& $this;
 		
-		if(!defined(E_ODOWEB_APPERROR)) {
-			define(E_ODOWEB_APPERROR, -1);
+		if(!defined("E_ODOWEB_APPERROR")) {
+			define("E_ODOWEB_APPERROR", -1);
 		}
 		
 		$oldErrorHandler = set_error_handler(array($this, 'ODOErrorHandler'));

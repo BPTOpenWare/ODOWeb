@@ -1,39 +1,42 @@
 <?PHP
 
-/**
- * Copyright (C) 2016  Bluff Point Technologies LLC
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 class NewsDB {
 
+	private $recentPosts;
+	
 	function __construct() {
+		
+		$recentPosts = array();
 		
 	}
 	
-	function GetLastPost() {
+	/**
+	 * Gets the most recent posts and uses the limit passed
+	 * in to only return that many. it is assumed an application
+	 * will only use one limit when calling this. Otherwise the cached
+	 * recentPosts will be of an invalid length
+	 * @param unknown $Limit limit on query
+	 * @param string $Refresh if true the cache is ignored and the query is performed again
+	 * @return array An array of all recent posts
+	 */
+	public function GetLastPost($Limit, $Refresh=FALSE) {
+		
 		$Post = new NewsItem();
+		$Posts = Array();
 		global $ODODBO;
 		
+		//if the cached array has values and we're not supposed
+		//to refresh it then just return
+		if((count($this->recentPosts) > 0)&&(!$Refresh)) {
+			return $this->recentPosts;
+		}
 		
 		if($_SESSION["ODOUserO"]->getIsGuest()) {
 			
-			$query = "SELECT news.PriKey, Date, Title, Article, CatID, CatName, AllowGuest FROM news LEFT JOIN newsCats on news.CatID=newsCats.PriKey WHERE AllowGuest=1 ORDER BY Date Desc LIMIT 1";
+			$query = "SELECT news.PriKey, Date, Title, Article, CatID, CatName, AllowGuest FROM news LEFT JOIN newsCats on news.CatID=newsCats.PriKey WHERE AllowGuest=1 ORDER BY Date Desc LIMIT {$Limit}";
 			
 		} else {
-			$query = "SELECT news.PriKey, Date, Title, Article, news.CatID, newsCats.CatName, AllowGuest FROM news, newsCats, ODOUserGID, newsGACL WHERE ODOUserGID.UID=? AND ODOUserGID.GID=newsGACL.GID AND newsGACL.newsGID=news.CatID and news.CatID=newsCats.PriKey ORDER BY Date Desc LIMIT 1";
+			$query = "SELECT news.PriKey, Date, Title, Article, news.CatID, newsCats.CatName, AllowGuest FROM news, newsCats, ODOUserGID, newsGACL WHERE ODOUserGID.UID=? AND ODOUserGID.GID=newsGACL.GID AND newsGACL.newsGID=news.CatID and news.CatID=newsCats.PriKey ORDER BY Date Desc LIMIT {$Limit}";
 		}
 		
 		//prepare
@@ -62,8 +65,9 @@ class NewsDB {
 			exit(1);
 		}
 		
-		if($MyStm->fetch()) {
-				
+		while($MyStm->fetch()) {
+			$Post = new NewsItem();
+			
 			$Post->PostID = $PostID;
 			$Post->PostDate = $dt;
 			$Post->Title = $title;
@@ -72,6 +76,7 @@ class NewsDB {
 			$Post->CategoryName = $CatName;
 			$Post->AllowGuest = $AllowGuest;
 			
+			array_push($Posts, $Post);
 		}
 		
 		/* free result */
@@ -81,10 +86,115 @@ class NewsDB {
 		$MyStm->close();
 		
 		
-		return $Post;
+		return $Posts;
 		
 	}
 	
+	public function getPostByID($PostID) {
+		
+		$Posts = array();
+
+		if($_SESSION["ODOUserO"]->getIsGuest()) {
+		
+			$query = "SELECT news.PriKey, news.title, news.Article, news.Date, newsCats.CatName, news.CatID, AllowGuest from news, newsCats where news.AllowGuest=1 and news.CatID=newsCats.PriKey and news.PriKey=" . $_SESSION["ODOSessionO"]->EscapedVars["PostID"];
+		
+		} else {
+		
+			$query = "SELECT distinct news.PriKey, news.title, news.Article, news.Date, newsCats.CatName, news.CatID, AllowGuest FROM news, ODOUserGID, newsGACL, newsCats where ODOUserGID.UID=" . $_SESSION["ODOUserO"]->getUID() . " and ODOUserGID.GID=newsGACL.GID and newsGACL.newsGID=news.CatID and news.CatID=newsCats.PriKey and news.PriKey=" . $_SESSION["ODOSessionO"]->EscapedVars["PostID"];
+		
+		}
+		
+		$TempRecords = $GLOBALS['globalref'][1]->Query($query);
+			
+		while($row = mysqli_fetch_assoc($TempRecords)) {
+			$Post = new NewsItem();
+			
+			$Post->PostID = $row["PriKey"];
+			$Post->PostDate = $row["Date"];
+			$Post->Title = $row["title"];
+			$Post->Article = $row["Article"];
+			$Post->CatID = $row["CatID"];
+			$Post->CategoryName = $row["CatName"];
+			
+			if((isset($row["AllowGuest"]))&&($row["AllowGuest"] == 1)) {
+				$Post->AllowGuest = true;
+			} else {
+				$Post->AllowGuest = false;
+			}
+				
+			array_push($Posts, $Post);
+				
+		}
+		
+		return $Posts;
+		
+	}
+	
+	
+	public function getAllPosts($catID, $sDate, $eDate) {
+
+		
+			$Posts = array();
+		
+		
+			if($_SESSION["ODOUserO"]->getIsGuest()) {
+				$query = "SELECT news.PriKey, news.title, news.Article, news.Date, newsCats.CatName, news.CatID, AllowGuest FROM news, newsCats where news.AllowGuest=1 and news.CatID=newsCats.PriKey";
+		
+			} else {
+				$query = "SELECT distinct news.PriKey, news.title, news.Article, news.Date, newsCats.CatName, news.CatID, AllowGuest FROM news, ODOUserGID, newsGACL, newsCats where ODOUserGID.UID=" . $_SESSION["ODOUserO"]->getUID() . " and ODOUserGID.GID=newsGACL.GID and newsGACL.newsGID=news.CatID and news.CatID=newsCats.PriKey";
+			}
+		
+		
+		
+			if((isset($catID)) && (!is_null($catID))) {
+		
+				if(!is_numeric($_SESSION["ODOSessionO"]->EscapedVars["CatID"])) {
+					trigger_error("CatID is not numeric! Your IP and this event have been logged.", E_USER_ERROR);
+					exit(1);
+				}
+		
+				$query = $query . " and news.CatID=" . $_SESSION["ODOSessionO"]->EscapedVars["CatID"];
+			}
+		
+			if((isset($sDate)) && (!is_null($sDate))) {
+		
+				$query = $query . " and news.Date>=" . date("Y-m-d", strtotime($_SESSION["ODOSessionO"]->EscapedVars["sDate"]));
+		
+			}
+		
+			if((isset($eDate)) && (!is_null($eDate))) {
+		
+				$query = $query . " and news.Date<=" . date("Y-m-d", strtotime($_SESSION["ODOSessionO"]->EscapedVars["eDate"]));
+			}
+		
+		
+			$query = $query . " order by news.Date DESC";
+			
+			$TempRecords = $GLOBALS['globalref'][1]->Query($query);
+			
+
+			while($row = mysqli_fetch_assoc($TempRecords)) {
+				$Post = new NewsItem();
+					
+				$Post->PostID = $row["PriKey"];
+				$Post->PostDate = $row["Date"];
+				$Post->Title = $row["title"];
+				$Post->Article = $row["Article"];
+				$Post->CatID = $row["CatID"];
+				$Post->CategoryName = $row["CatName"];
+				
+				if((isset($row["AllowGuest"]))&&($row["AllowGuest"] == 1)) {
+					$Post->AllowGuest = true;
+				} else {
+					$Post->AllowGuest = false;
+				}
+			
+				array_push($Posts, $Post);
+			
+			}
+			
+			return $Posts;
+	}
 }
 
 

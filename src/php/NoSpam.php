@@ -57,30 +57,45 @@ imageline($img_number, rand(25,50), rand(0,25), rand(55,100), rand(0,25), $linec
 imageline($img_number, rand(0,50), rand(0,25), rand(1,100), rand(0,25), $linecolor);
 session_start();
 
-$link = mysql_connect(DBIPADD, DBUNAME, DBPWORD)
-			or die('Could not connect: ' . mysql_error());
+$link = new mysqli(DBIPADD, DBUNAME, DBPWORD, DBNAME);
+
+if($link->connect_errno) {
+	die('Could not connect: ' . $link->connect_errno . ":" . $link->connect_error);
+}
 		
-mysql_select_db(DBNAME) or trigger_error('Could not select database');
 
 //first delete all past 24 hours
 $curTime = time();
 $curTime = $curTime - (24 * 60 * 60);
 $myquery = "DELETE FROM NoSpam WHERE tstamp < " . $curTime;
-$result = mysql_query($myquery) or trigger_error('Query failed at 502a: Query:' . $myquery . "Error:" . mysql_error(), E_USER_ERROR);
+
+$result = $link->query($myquery);
+
+if(!$result) { 
+        trigger_error('Query failed at 502a: Query:' . $myquery . "Error:" . $link->errno . ":" . $link->error, E_USER_ERROR);
+}
 
 $myquery = "SELECT * FROM NoSpam WHERE SessionID='" . session_id() . "'";
 
-$result = mysql_query($myquery) or trigger_error('Query failed at 502b: Query:' . $myquery . "Error:" . mysql_error(), E_USER_ERROR);
+$result = $link->query($myquery);
 
-if(!mysql_num_rows($result)) {
+if(!$result) { 
+        trigger_error('Query failed at 502b: Query:' . $myquery . "Error:" . $link->errno . ":" . $link->error, E_USER_ERROR);
+}
+
+if(!mysqli_num_rows($result)) {
 	//then insert
 	$myquery = "INSERT INTO NoSpam(SessionID, txtSpam, tstamp) values('" . session_id() . "','" . $txt . "'," . time() . ")";
-	$result = mysql_query($myquery) or trigger_error('Query failed at 502c: Query:' . $myquery . "Error:" . mysql_error(), E_USER_ERROR);
+	$result = $link->query($myquery);
+	
+	if(!$result) { 
+        	trigger_error('Query failed at 502c: Query:' . $myquery . "Error:" . $link->errno . ":" . $link->error, E_USER_ERROR);
+	}
 
 } else {
 
 	$myquery = "UPDATE NoSpam SET txtSpam='" . $txt . "', tstamp=" . time() . " WHERE SessionID='" . session_id() . "'";
-	$result = mysql_query($myquery) or trigger_error('Query failed at 502d: Query:' . $myquery . "Error:" . mysql_error(), E_USER_ERROR);
+	$result = $link->query($myquery) or trigger_error('Query failed at 502d: Query:' . $myquery . "Error:" . $link->error, E_USER_ERROR);
 
 }
 
