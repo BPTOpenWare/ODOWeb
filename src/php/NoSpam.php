@@ -104,6 +104,6 @@ imagejpeg($img_number);
 imagecolordeallocate($img_number, $backcolor);
 imagecolordeallocate($img_number, $textcolor);
 imagecolordeallocate($img_number, $linecolor);
-mysql_close($link);
+$link->close();
 imagedestroy($img_number);
 ?> 

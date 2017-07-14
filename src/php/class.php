@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+include 'genericUserObjects.php';
 
 //globalref is defined here and assigned when called by ODOSession initialization. 
 //Wakeup will need to reregister each object to this array as they will have 
@@ -191,11 +192,25 @@ class ODORegisterObject {
 }
 
 /**
+ * Represents entire object
+ * to be loaded entire page
+ * @author nict
+ *
+ */
+class DynamicObjectCode {
+
+	var $header;
+	var $allFunctions;
+	var $footer;
+	
+}
+
+
+/**
  * ODOSession object manages the session
  * using common routines for ODOWeb
  */
 class ODOSession {
-
 
 	var $pg;
 	var $ob;
@@ -211,14 +226,22 @@ class ODOSession {
 	public $onMobileDevice;
 	public $overrideMobile;
 	private $csrfTokenArray; //array of tokens for csrf protection
+	private $sessionObjStartTime;
+	private $logSessionTimeMessage;
+	private $pageLoadedFromCache;
+	private $cachedObjectCodePath;
+	private $cachedPageCodePath;
 	
 	//SerializedObjects is used to store user classes that need to exist between sessions.
 	//objects asigned to the Session array will not work when they are woken back up as the
 	//classes are not defined yet during session start. unserialize must be called later
-	
+
 	function __construct() {
+		
+		$this->sessionObjStartTime = microtime(true);
+		
 		global $globalref;
-		$globalref[0] = &$this;
+        	$globalref[0] = &$this;
 		$this->pg = -1;
 		$this->ob = -1;
 		$this->ObjectName = "";
@@ -234,18 +257,22 @@ class ODOSession {
 		//this drastically reduces the number of MySQL queries
 		$this->LoadCommonNameArrays();
 		$this->LoadValidSystemCalls();
-	
+		
 		//check user agent to set initial mobile param
 		$useragent=$_SERVER['HTTP_USER_AGENT'];
 		if(preg_match('/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i',$useragent)||preg_match('/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i',substr($useragent,0,4))) {
 			$this->onMobileDevice = true;
 		}
-	
+		
 		$this->overrideMobile = false;
-	
+		$this->pageLoadedFromCache = false;
+		$this->cachedObjectCodePath = "";
+		$this->cachedPageCodePath = "";
 		$this->csrfTokenArray = array();
+		$this->logSessionTimeMessage = "";
+		
 	}
-	
+
 	/**
 	 * gets the registered object's name reference
 	 * Registered objects are used to avoid creating duplicate
@@ -262,16 +289,16 @@ class ODOSession {
 			} else {
 				return NULL;
 			}
-	
+
 		} else {
 			return NULL;
 		}
-	
+
 	}
-	
+
 	/**
 	 * Registers a new function that a user
-	 * can call directly through the system using a
+	 * can call directly through the system using a 
 	 * post or get request
 	 * @param string $ObjectName
 	 * @param string $ClassName
@@ -285,15 +312,15 @@ class ODOSession {
 			return false;
 		}
 	}
-	
+
 	/**
-	 * System functions are loaded to allow user to
+	 * System functions are loaded to allow user to 
 	 * login/logout from any page. Negative object id numbers are used
 	 * to avoid conflicting with dynamically loaded objects from the
 	 * database
 	 */
 	private function LoadValidSystemCalls() {
-	
+
 		//system objects will be added to the List with Negative ID numbers
 		$this->RegisteredFunctions->AddSystemObjectFunction("ODOUserO", -3, "ChangePasswordPublic", -31);
 		$this->RegisteredFunctions->AddSystemObjectFunction("ODOUserO", -3, "LoginGuest", -32);
@@ -301,7 +328,7 @@ class ODOSession {
 		$this->RegisteredFunctions->AddSystemObjectFunction("ODOUserO", -3, "Login", -34);
 		$this->RegisteredFunctions->AddSystemObjectFunction("ODOUserO", -3, "SelfPasswordResetPublic", -35);
 	}
-	
+
 	/**
 	 * build the array we compare against when checking if a page exists
 	 */
@@ -309,15 +336,15 @@ class ODOSession {
 		//Load Common Page names first
 		$query = "select PageID, PageName from ODOPages";
 		$result = $GLOBALS['globalref'][1]->Query($query);
-	
+
 		while ($row = mysqli_fetch_assoc($result))
 		{
 			$this->CommonPageNames[$row["PageName"]] = $row["PageID"];
-	
+
 		}
-	
+
 	}
-	
+
 	/**
 	 * Checks if a variable object name is registered
 	 * @param string $ObjectName
@@ -328,9 +355,9 @@ class ODOSession {
 		} else {
 			return false;
 		}
-	
+
 	}
-	
+
 	/**
 	 * registers an object in dynamical loaded pages
 	 * @param string $ObjectName Object variable name to register
@@ -338,13 +365,13 @@ class ODOSession {
 	 */
 	public function RegisterObject($ObjectName, &$Obj) {
 		//only used for
-	
+
 		if(!isset($this->UserObjectArray[$ObjectName])) {
 			$this->UserObjectArray[$ObjectName] = &$Obj;
 		}
 	}
-	
-	
+
+
 	/**
 	 * escapes all get and post passed variables into a common array
 	 * @param boolean $loadmobilesite if true will trigger a redirect to mobile index
@@ -352,26 +379,26 @@ class ODOSession {
 	public function ConvertPostGetVars($loadmobilesite = FALSE) {
 		//we convert get vars then post vars so post vars override
 		//redirect if loadmobilesite is false and onmobiledevice is true
-	
+
 		if((isset($_GET["overrideMobile"]))||(isset($_POST["overrideMobile"]))) {
 			$this->overrideMobile = true;
 		}
-	
+		
 		if($this->onMobileDevice && !$this->overrideMobile && !$loadmobilesite) {
 			header('Location: mobile/index.php');
 			exit();
-		}
-	
-	
+		} 
+		
+		
 		$loadPage = -1;
-	
+		
 		if(isset($_POST["pg"])) {
 			$loadPage = $_POST["pg"];
-				
+			
 		} else if(isset($_GET["pg"])) {
 			$loadPage = $_GET["pg"];
 		}
-	
+		
 		if(is_numeric($loadPage)) {
 			$this->pg = -1;
 			foreach( $this->CommonPageNames as $key=>$value ) {
@@ -387,7 +414,7 @@ class ODOSession {
 		} else {
 			if(isset($this->CommonPageNames[$loadPage])) {
 				if(($loadmobilesite)&&(isset($this->CommonPageNames["m" . $loadPage]))) {
-					$this->pg = $this->CommonPageNames["m" . $loadPage];
+						$this->pg = $this->CommonPageNames["m" . $loadPage];
 				} else {
 					$this->pg = $this->CommonPageNames[$loadPage];
 				}
@@ -395,7 +422,7 @@ class ODOSession {
 				$this->pg = -1;
 			}
 		}
-	
+
 		if(isset($_GET["ob"])) {
 			if(is_numeric($_GET["ob"])) {
 				$this->ObjectName = $this->RegisteredFunctions->GetObjName($_GET["ob"]);
@@ -405,7 +432,7 @@ class ODOSession {
 					$this->ObjectName = "";
 					$this->ob = -1;
 				}
-	
+
 			} else {
 				$this->ob = $this->RegisteredFunctions->GetObjID($_GET["ob"]);
 				if($this->ob == false) {
@@ -415,10 +442,10 @@ class ODOSession {
 					//else we have a valid obID
 					$this->ObjectName = $this->EscapeMe($_GET["ob"]);
 				}
-	
+
 			}
 		}
-	
+
 		if(isset($_POST["ob"])) {
 			if(is_numeric($_POST["ob"])) {
 				$this->ObjectName = $this->RegisteredFunctions->GetObjName($_POST["ob"]);
@@ -428,7 +455,7 @@ class ODOSession {
 					$this->ObjectName = "";
 					$this->ob = -1;
 				}
-	
+
 			} else {
 				$this->ob = $this->RegisteredFunctions->GetObjID($_POST["ob"]);
 				if($this->ob == false) {
@@ -438,10 +465,10 @@ class ODOSession {
 					//else we have a valid obID
 					$this->ObjectName = $this->EscapeMe($_POST["ob"]);
 				}
-	
+
 			}
 		}
-	
+
 		if((isset($_GET["fn"])) && ($this->ob != -1)) {
 			if(is_numeric($_GET["fn"])) {
 				$this->FunctionName = $this->RegisteredFunctions->GetFunctionName($this->ObjectName, $_GET["fn"]);
@@ -453,15 +480,15 @@ class ODOSession {
 			} else {
 				$this->fn = $this->RegisteredFunctions->GetFunctionID($this->ObjectName, $_GET["fn"]);
 				if($this->fn != -1) {
-	
+
 					$this->FunctionName = $this->EscapeMe($_GET["fn"]);
 				} else {
 					$this->FunctionName = "";
 				}
 			}
-	
+
 		}
-	
+
 		if((isset($_POST["fn"])) && ($this->ob != -1)) {
 			if(is_numeric($_POST["fn"])) {
 				$this->FunctionName = $this->RegisteredFunctions->GetFunctionName($this->ObjectName, $_POST["fn"]);
@@ -478,20 +505,20 @@ class ODOSession {
 					$this->FunctionName = "";
 				}
 			}
-	
+
 		}
-	
-	
+
+
 		$this->ObjectOnlyOutput = false;
 		if((isset($_GET["ObjectOnlyOutput"]))&&($_GET["ObjectOnlyOutput"] == "1")) {
-	
+
 			$this->ObjectOnlyOutput = true;
 		}
-	
+
 		if((isset($_POST["ObjectOnlyOutput"]))&&($_POST["ObjectOnlyOutput"] == "1")) {
 			$this->ObjectOnlyOutput = true;
 		}
-	
+
 		//now escape the entire array
 		//we overwrite Get vars with Post vars
 		foreach($_GET as $Var=>$Value) {
@@ -499,17 +526,17 @@ class ODOSession {
 				$this->EscapedVars[$this->EscapeMe($Var)] = $this->EscapeMe($Value);
 			}
 		}
-	
+
 		foreach($_POST as $Var=>$Value) {
 			if(!is_array($Value)) {
 				$this->EscapedVars[$this->EscapeMe($Var)] = $this->EscapeMe($Value);
 			}
 		}
-	
+		
 		//verify csrf
 		$this->verifyCSRFTokenInRequest();
 	}
-	
+
 	/**
 	 * simply calls the ododbo escapeme function
 	 * @param unknown $Variable variable to be escaped
@@ -517,12 +544,12 @@ class ODOSession {
 	 */
 	private function EscapeMe($Variable) {
 		$Rvalue = "";
-	
+
 		$Rvalue = $GLOBALS['globalref'][1]->EscapeMe($Variable);
-	
+
 		return $Rvalue;
 	}
-	
+
 	/**
 	 * directly calls the serialize/unserialize for registered objects
 	 * @param String $Name object name
@@ -530,142 +557,385 @@ class ODOSession {
 	private function WakeupRegisteredObject($Name) {
 		if(!isset($_SESSION["ODOSessionO"]->UserObjectArray[$Name])) {
 			$_SESSION["ODOSessionO"]->UserObjectArray[$Name] = unserialize($_SESSION["ODOSessionO"]->SerializedObjects[$Name]);
-	
+
 			if(GLOBALUSEROBJECTS) {
 				if(!isset($GLOBALS[$Name])) {
 					$GLOBALS[$Name] =& $_SESSION["ODOSessionO"]->UserObjectArray[$Name];
 				}
-	
+
 			}
-	
+
 			return true;
 		} else {
 			return false;
 		}
 	}
-	
+
 	/**
 	 * builds the serialize and unserialize script for the dynamic page
 	 * @param string $Name
 	 * @return string
 	 */
 	private function BuildWakeupObjectScript($Name) {
-	
+
 		$Script = "";
 		if(isset($this->SerializedObjects[$Name])) {
-			$Script = "if(!isset(\$_SESSION[\"ODOSessionO\"]->UserObjectArray[\"$Name\"])) { \n \$_SESSION[\"ODOSessionO\"]->UserObjectArray[\"$Name\"] = unserialize(\$_SESSION[\"ODOSessionO\"]->SerializedObjects[\"$Name\"]);\n}\n";
-	
-			if(GLOBALUSEROBJECTS) {
-				$Script = $Script . "if(!isset(\$GLOBALS[\"$Name\"])) { \n \$GLOBALS[\"$Name\"] =& \$_SESSION[\"ODOSessionO\"]->UserObjectArray[\"$Name\"];\n}\n";
-	
+			
+			if($this->pageLoadedFromCache) {
+				if(!isset($this->UserObjectArray["$Name"])) { 
+					$this->UserObjectArray["$Name"] = unserialize($this->SerializedObjects["$Name"]);
+				}
+				
+				if(GLOBALUSEROBJECTS) {
+					
+					if(!isset($GLOBALS["$Name"])) { 
+						$GLOBALS["$Name"] =& $_SESSION["ODOSessionO"]->UserObjectArray["$Name"];
+					}	
+				}
+				
+			} else {
+				
+				$Script = "if(!isset(\$_SESSION[\"ODOSessionO\"]->UserObjectArray[\"$Name\"])) { \n \$_SESSION[\"ODOSessionO\"]->UserObjectArray[\"$Name\"] = unserialize(\$_SESSION[\"ODOSessionO\"]->SerializedObjects[\"$Name\"]);\n}\n";
+				
+				if(GLOBALUSEROBJECTS) {
+					$Script = $Script . "if(!isset(\$GLOBALS[\"$Name\"])) { \n \$GLOBALS[\"$Name\"] =& \$_SESSION[\"ODOSessionO\"]->UserObjectArray[\"$Name\"];\n}\n";
+				
+				}
+				
 			}
 		}
-	
+
 		return $Script;
 	}
-	
-	
+
+
 	/**
 	 * this function will output a string for evaluation. It will reinitialize all objects
-	 * this code is to only be placed after the class definitions and before page code.
+	 * this code is to only be placed after the class definitions and before page code.		
 	 */
 	private function BuildWakeupAllObjectsScript() {
-	
+		
 		$Script = "";
-	
+
 		foreach($this->SerializedObjects as $Name=>$Obj)
 		{
 			$Script = $Script . $this->BuildWakeupObjectScript($Name);
-	
+
 		}
-	
-		//unset($this->SerializedObjects);
-	
+
+
 		return $Script;
+	}
+
+	/**
+	 * Some reverse proxies allow for a cookie to 
+	 * indicate the instance id the reverse proxy should
+	 * always be redirected back to. This can preserve 
+	 * session data and simplify the application.
+	 */
+	private function SetStickySessionCookie() {
+		
+		if((defined('USESTICKYSESSION'))&& (USESTICKYSESSION == 1)) {
+			
+			if((defined('STICKYSESSIONHEADER')) && (defined('STICKYSESSIONCOOKIE')) && 
+					(strlen(STICKYSESSIONHEADER)>0) && (isset($_SERVER['HTTP_' . STICKYSESSIONHEADER]))) {
+				$instanceID = $_SERVER['HTTP_' . STICKYSESSIONHEADER];
+				
+				//set the cookie for the instance id
+				setcookie(STICKYSESSIONCOOKIE, $instanceID);
+			}
+			
+		}
+		
+	}
+	
+	/**
+	 * Builds the call user func call
+	 * for when object and function is passed into request
+	 */
+	private function BuildCalUserFuncScript() {
+		
+		$ScriptToRun = "";
+		
+		if($this->pageLoadedFromCache) {
+			
+			if($this->ob < -1) {
+				call_user_func(array($_SESSION[$this->ObjectName],$this->FunctionName));
+			} elseif($GLOBALS['globalref'][6]->IsDynamic) {
+				//we only want to call a user defind function
+				//if the page is dynamic
+				call_user_func(array($_SESSION["ODOSessionO"]->UserObjectArray[$this->ObjectName],$this->FunctionName));
+			}
+				
+		} else {
+			
+			if($this->ob < -1) {
+				
+				//if we have a system call and
+				//the page is not dynamic then we need to call it now
+				if($GLOBALS['globalref'][6]->IsDynamic) {
+					
+					$ScriptToRun .= "\n call_user_func(array(\$_SESSION[\"" . $this->ObjectName . "\"],'" . $this->FunctionName . "'));\n\n";
+						
+				} else {
+					call_user_func(array($_SESSION[$this->ObjectName],$this->FunctionName));
+				}
+				
+			} elseif($GLOBALS['globalref'][6]->IsDynamic) {
+				//we only want to call a user defind function
+				//if the page is dynamic
+				$ScriptToRun .= "\n call_user_func(array(\$_SESSION[\"ODOSessionO\"]->UserObjectArray[\"" . $this->ObjectName . "\"],'" . $this->FunctionName . "'));\n\n";
+			}	
+		
+		}
+		
+		return $ScriptToRun;
 	}
 	
 	/**
 	 * Call to open th page and load all objects for it
-	 * @param boolean $mobile
+	 * @param boolean $mobile 
 	 */
 	public function OpenPage($mobile = FALSE) {
-	
-	
+		
+		$this->SetStickySessionCookie();
+		
 		$this->ConvertPostGetVars($mobile);
-	
-		if($this->CheckForRights())
+
+		//if user does not have access output generic access denied message
+		if(!$this->CheckForRightsLoadPage())
 		{
-			if($GLOBALS['globalref'][6]->IsDynamic) {
-				//then we have no double output to worry about
-				$ScriptToRun = "";
-				if(($this->ObjectName != "") && ($this->FunctionName != ""))
-				{
-	
-					if($this->ob < -1) {
-						$ScriptToRun = "call_user_func(array(\$_SESSION[\"" . $this->ObjectName . "\"],'" . $this->FunctionName . "'));";
-					} else {
-						$ScriptToRun = "call_user_func(array(\$_SESSION[\"ODOSessionO\"]->UserObjectArray[\"" . $this->ObjectName . "\"],'" . $this->FunctionName . "'));";
-					}
-	
-					$ScriptToRun = $GLOBALS['globalref'][6]->ObjectCode . "\n" . $this->BuildWakeupAllObjectsScript() . "\n" . $ScriptToRun;
-	
-					//check if ObjectOnlyOutput
-					if(!$this->ObjectOnlyOutput) {
-						$ScriptToRun = $ScriptToRun . $GLOBALS['globalref'][6]->Content;
-					}
-	
-				} else {
-					$ScriptToRun = $GLOBALS['globalref'][6]->ObjectCode . "\n" . $this->BuildWakeupAllObjectsScript() . "\n" . $GLOBALS['globalref'][6]->Content;
-				}
-	
-	
-				//echo $ScriptToRun;
-	
-				//store to be dumped during exception
-				$GLOBALS['globalref'][6]->ScriptToRun = $ScriptToRun;
-				$evalReturn = eval($ScriptToRun);
-				if((!is_null($evalReturn))&&(!$evalReturn)&&(DUMPEVALERROR)) {
-	
-					$filename = DUMPEVALDIR;
-					$filename .= date('Ymd-His');
-					$filename .= "_";
-					$filename .= $GLOBALS['globalref'][3]->getusername();
-					$filename .= ".txt";
-					file_put_contents($filename, $ScriptToRun);
-				}
-	
-			} else {
-				//check if system object is being called
-				if($this->ob < -1) {
-					$ScriptToRun = "call_user_func(array(\$_SESSION[\"" . $this->ObjectName . "\"],'" . $this->FunctionName . "'));";
-	
-					eval($ScriptToRun);
-	
-					//check if ObjectOnlyOutput
-					if(!$this->ObjectOnlyOutput) {
-						echo($GLOBALS['globalref'][6]->Content);
-					}
-	
-				} else {
-					//if the page is not dynamic and the object being called
-					//is not a system object then we just output the page
-					echo($GLOBALS['globalref'][6]->Content);
-				}
-	
-			}
-	
-		} else {
-			//custom access denied page would go here
-	
 			//else notify user.
 			echo "<html><title>" . SERVERNAME . " Access denied</title><link rel='stylesheet' type='text/css' href='css/global.css'><body>\n<div class=\"loginHeader\"></div>\n<div class=\"loginLeft\"></div>\n<div class=\"loginCenter\">\n<div id=\"loginerror\" class=\"loginerror\">ACCESS DENIED</div></div>\n<div class=\"loginRight\"></div>\n<div class=\"loginFooter\"></div>\n</body></html>";
-	
+			
+			return;
+		} 
+
+		if($GLOBALS['globalref'][6]->IsDynamic) {
+			$callEval = true;
+		} else {
+			$callEval = false;
 		}
-	
+		
+		if($this->pageLoadedFromCache) {
+			$callEval = false;
+		}
+		
+		$ScriptToRun = "";
+		
+		//load object code first
+		if($callEval) {
+			$ScriptToRun = $GLOBALS['globalref'][6]->ObjectCode;
+		} elseif(($GLOBALS['globalref'][6]->IsDynamic)&&(is_file($this->cachedObjectCodePath))) {
+			//else include the cached version of object code
+			include $this->cachedObjectCodePath;
+		}
+		
+		//build wakeup deserialize script next
+		if($GLOBALS['globalref'][6]->IsDynamic) {
+			$ScriptToRun .= $this->BuildWakeupAllObjectsScript();
+		}
+		
+		//make call to user function if call requested
+		if(($this->ObjectName != "") && ($this->FunctionName != ""))
+		{
+			$ScriptToRun .= $this->BuildCalUserFuncScript();
+		}
+		
+		//check if object only output and add content to output.
+		if((!$this->ObjectOnlyOutput)&&($callEval)) {
+			
+			$ScriptToRun .= $GLOBALS['globalref'][6]->Content;
+			
+		}
+		
+		if(($callEval)&&(defined('LOGSESSIONTIME'))&&(LOGSESSIONTIME == 1)) {
+			$beforeEval = microtime(true);
+			$totalTime = $beforeEval - $this->sessionObjStartTime;
+				
+			$this->logSessionTimeMessage = "Time before eval of page:{$totalTime} ";
+		}
+		
+		//call eval if needed
+		if($callEval) {
+			
+			$evalReturn = eval($ScriptToRun);
+			
+		} else if(($this->pageLoadedFromCache) && (!$this->ObjectOnlyOutput)) {
+			
+			if($GLOBALS['globalref'][6]->IsDynamic) {
+				include $this->cachedPageCodePath;
+			} else {
+				//read in the page and echo it
+				$cachedPage = file_get_contents($this->cachedPageCodePath);
+				echo $cachedPage;
+			}
+		} else if((!$this->pageLoadedFromCache) && (!$this->ObjectOnlyOutput)) {
+			
+			echo $GLOBALS['globalref'][6]->Content;
+		}
+		
+		
+		if(($callEval)&&(defined('LOGSESSIONTIME'))&&(LOGSESSIONTIME == 1)) {
+			$afterEval = microtime(true);
+			$totalTime = $afterEval - $this->sessionObjStartTime;
+			$evalTime = $afterEval - $beforeEval;
+				
+		
+			$this->logSessionTimeMessage .= "Time after eval of page:{$totalTime} Total Eval time:{$evalTime}";
+				
+		}
+		
+		if(($callEval) && (!is_null($evalReturn)) && (!$evalReturn) && (DUMPEVALERROR)) {
+		
+			$filename = DUMPEVALDIR;
+			$filename .= date('Ymd-His');
+			$filename .= "_";
+			$filename .= $GLOBALS['globalref'][3]->getusername();
+			$filename .= ".txt";
+			
+			
+			file_put_contents($filename, $ScriptToRun);
+		}
+		
+		//build the cache
+		if((defined('CACHEPAGES')) && (CACHEPAGES == 1) && (!$this->pageLoadedFromCache)) {
+			$this->BuildCache();
+		}
+		
+		
+	}
+
+	/**
+	 * Checks for rights by page and loads the
+	 * page either from Cache or from DB
+	 */
+	private function CheckForRightsLoadPage() {
+
+		$this->pageLoadedFromCache = false;
+		$this->cachedObjectCodePath = "";
+		$this->cachedPageCodePath = "";
+		
+		if(defined('CACHEPAGES') && CACHEPAGES == 1) {
+				
+			if($this->CheckForCachedPage()) {
+				$this->pageLoadedFromCache = true;	
+				
+			}
+		}
+		
+		if(!$this->pageLoadedFromCache) {
+			
+			return $this->LoadPageFromDB();
+		}
+		
+		return true;
 	}
 	
-	private function CheckForRights() {
+
+	/**
+	 * Pages are stored on the local filesystem
+	 * with pageid+allgroupids.php
+	 */
+	private function CheckForCachedPage() {
+		
+		//build key
+		$gidKey = $GLOBALS['globalref'][3]->GetUserGroupIDArray();
+		$pathBeg = OURCACHEPATH . $this->pg . $gidKey;
+		$staticPath = $pathBeg . ".html";
+		$dynamicPath = $pathBeg . ".php";
+		$dynamicObjPath = $pathBeg . "_OB.php";
+				
+		//if we find the cached page
+		//check if page is dynamic and if it is check if we found
+		//the dynamic cached object code for the page
+		if((is_file($staticPath))) {
+			
+			$this->cachedPageCodePath = $staticPath;
+			$this->cachedObjectCodePath = "";
+			
+			return true;
+			
+		} elseif((is_file($dynamicPath))) {
+			
+			$GLOBALS['globalref'][6]->IsDynamic = true;
+			$this->cachedPageCodePath = $dynamicPath;
+			
+			if(is_file($dynamicObjPath)) {
+				$this->cachedObjectCodePath = $dynamicObjPath;
+			}
+			
+			return true;
+		}
+		
+		return false;
+		
+	}
 	
+	/**
+	 * Creates a cached version of the page using all the group ids
+	 * the user is a part of and the page id
+	 * @param String $PageScript
+	 */
+	private function BuildCache() {
+		
+		//build key
+		//output page first
+		$gidKey = $GLOBALS['globalref'][3]->GetUserGroupIDArray();
+		$ourKey = $this->pg . $gidKey;
+		
+		if($GLOBALS['globalref'][6]->IsDynamic) {
+			$cachePath = OURCACHEPATH . $ourKey . ".php";
+		} else {
+			$cachePath = OURCACHEPATH . $ourKey . ".html";
+		}
+		
+		if(!is_file($cachePath)) {
+			$handle = fopen($cachePath, "x");
+		
+			if($GLOBALS['globalref'][6]->IsDynamic) {
+				$PageScript = "<?PHP\n\n{$GLOBALS['globalref'][6]->Content}\n\n?>";
+			} else {
+				$PageScript = $GLOBALS['globalref'][6]->Content;
+			}
+		
+			fwrite($handle, $PageScript);
+		
+			fclose($handle);
+		
+			//log creation of the cached file
+			$Comment = "Created cached page for page id:{$this->pg} filename:{$cachePath}";
+		
+			$GLOBALS['globalref'][4]->LogEvent("CACHEDPAGE", $Comment, 5);
+		
+			//next output objects
+			if($GLOBALS['globalref'][6]->IsDynamic) {
+				$ourKey = $this->pg . $gidKey . "_OB.php";
+		
+				$cachePath = OURCACHEPATH . $ourKey;
+	
+				if(!is_file($cachePath)) {
+					$handle = fopen($cachePath, "x");
+		
+					$PageScript = "<?PHP\n\n{$GLOBALS['globalref'][6]->ObjectCode}\n\n?>";
+		
+					fwrite($handle, $PageScript);
+		
+					fclose($handle);
+			
+					//	log creation of the cached file
+					$Comment = "Created cached page for objects of page id:{$this->pg} filename:{$cachePath}";
+			
+					$GLOBALS['globalref'][4]->LogEvent("CACHEDOBJECTS", $Comment, 5);
+				}
+			}
+			
+		}
+		
+	}
+	
+	private function LoadPageFromDB() {
+
 		//check group permission
 		if((!isset($this->pg)) || ($this->pg == -1)) {
 			header("HTTP/1.0 404 Not Found");
@@ -673,39 +943,40 @@ class ODOSession {
 			$this->errorBadRequest("404", "Page Not Found!");
 			//exit
 		}
-	
+		
 		$query = "select ODOPages.PageContent, ODOPages.IsDynamic, ODOPages.IsAdmin, ODOGACL.GID, ODOUserGID.UID from ODOPages, ODOGACL, ODOUserGID where ( ( ODOPages.PageID = ";
-	
+		
 		$query = $query . $this->pg . " ) AND ( ODOPages.PageID = ODOGACL.PageID ) AND ( ODOGACL.GID = ODOUserGID.GID ) AND ( ODOUserGID.UID = ";
-	
+		
 		$query = $query . $GLOBALS['globalref'][3]->getUID() . ") )";
-	
+		
 		$result = $GLOBALS['globalref'][1]->Query($query);
-	
+		
 		if(!mysqli_num_rows($result))
 		{
 			$Comment = "User has tried to access a page they do not have access rights to.";
 			$GLOBALS['globalref'][4]->LogEvent("ACCESSDENIED", $Comment, 5);
 			return false;
 		}
-	
+		
 		//if we are here then we need to load PageContent and Page info
 		$row = mysqli_fetch_assoc($result);
 		$GLOBALS['globalref'][6]->Content = $row["PageContent"];
 		$GLOBALS['globalref'][6]->PageID = $this->pg;
 		$GLOBALS['globalref'][6]->IsDynamic = $row["IsDynamic"];
 		$GLOBALS['globalref'][6]->IsAdmin = $row["IsAdmin"];
-	
+		
 		//check object permission
 		if($row["IsDynamic"]) {
-	
+		
 			if(!$this->LoadObjectsforPage()) {
 				return false;
 			}
 		}
-	
+		
 		return true;
 	}
+	
 	
 	///////////////////////////////////////////////
 	//Name: LoadObjectsforPage
@@ -719,24 +990,24 @@ class ODOSession {
 	//Admin objects loaded onto non admin pages.
 	//
 	private function LoadObjectsforPage() {
-	
+
 		//ModArray is flaged with Module constants to load.  We will load the constants last
 		$ModArray = array();
-	
+
 		//check if Objects are even in page and check for Admin Flag
 		if($this->ob > -1)
 		{
 			$query = "select ODOPageObject.ObjID, ODOPageObject.PageID, ObjectNames.IsAdmin FROM ODOPageObject, ObjectNames WHERE ODOPageObject.ObjID = " . $this->ob . " AND ODOPageObject.PageID = " . $this->pg;
-	
+
 			if((!ADMINOBJECTSINNONADMINPAGES) && ($GLOBALS['globalref'][6]->IsAdmin)) {
 				//check if this is an admin page
-	
+
 				$query = $query . " AND ObjectNames.IsAdmin = 0";
-	
+
 			}
-	
+
 			$result = $GLOBALS['globalref'][1]->Query($query);
-	
+
 			if(!mysqli_num_rows($result))
 			{
 				$Comment = "User has tried to access an object that is NOT assigned to page.";
@@ -744,64 +1015,87 @@ class ODOSession {
 				return false;
 			}
 		}
-	
+
 		//next Load Objects based on User Rights
 		$query = "select * FROM ODOPageObject, ObjectNames WHERE ODOPageObject.PageID = " . $this->pg . " AND ODOPageObject.ObjID = ObjectNames.ObjID";
-	
+
 		$result = $GLOBALS['globalref'][1]->Query($query);
-	
+
 		//to be tacked onto top of page content
-	
-	
+
+
 		if(!mysqli_num_rows($result))
 		{
 			//no logging done. No objects assigned to page
 			return true;
 		} else {
-	
-			//else we need to load up objects user has access rights to
-			while ($row = mysqli_fetch_assoc($result)) {
-				//first check off ModID
-				$ModArray[$row["ModID"]] = 1;
-	
+
+
 				//next Load Object code
-				$query2 = "select Objects.ObjID, Objects.CodeSegID, Objects.fnName, Objects.Code, Objects.IsHeader, Objects.IsFooter, ANY_VALUE(ODOObjectACL.GID), ODOUserGID.UID from Objects, ODOObjectACL, ODOUserGID WHERE ((ODOUserGID.UID = " . $GLOBALS['globalref'][3]->getUID() . ") AND (ODOUserGID.GID = ODOObjectACL.GID) AND (ODOObjectACL.CodeSegID = Objects.CodeSegID) AND (Objects.ObjID = " . $row["ObjID"] . ")) Group By CodeSegID";
-	
-	
-	
+				$query2 = "select Objects.ObjID, Objects.CodeSegID, Objects.fnName, Objects.Code, Objects.IsHeader, Objects.IsFooter, ANY_VALUE(ODOObjectACL.GID), ODOUserGID.UID from Objects, ODOObjectACL, ODOUserGID WHERE ((ODOUserGID.UID = " . $GLOBALS['globalref'][3]->getUID() . ") AND (ODOUserGID.GID = ODOObjectACL.GID) AND (ODOObjectACL.CodeSegID = Objects.CodeSegID) AND (";
+				
+				$count = 0;
+				$codeArray = array();
+				
+				//else we need to load up objects user has access rights to
+				while ($row = mysqli_fetch_assoc($result)) {
+				
+					//first check off ModID
+					$ModArray[$row["ModID"]] = 1;
+						
+					if($count > 0) {
+						$query2 .= " OR ";
+					} 
+					
+					$query2 .= "Objects.ObjID={$row["ObjID"]}";
+					
+					$count++;
+				}
+
+				$query2 .= ")) Group By CodeSegID";
+				
 				$result2 = $GLOBALS['globalref'][1]->Query($query2);
-	
-				if(!mysqli_num_rows($result2)) {
-					//echo "Failed!";
-					//then page needs an object the user doesn't have rights to...but that's ok
-					//the user might be trying to access a different object on the page
-				} else {
+
+				if(mysqli_num_rows($result2) > 0) {
+					
 					$NewCodeSegment = "";
 					$CodeHeader = "";
 					$CodeFooter = "";
-	
-	
+
+
 					while ($row2 = mysqli_fetch_assoc($result2)) {
-						//print_r($row2);
-						if($row2["IsHeader"]) {
-							$CodeHeader = $row2["Code"];
-						} elseif($row2["IsFooter"]) {
-							$CodeFooter = $row2["Code"];
-						} else {
-	
-							$NewCodeSegment = $NewCodeSegment . $row2["Code"];
+						
+						if(!isset($codeArray[$row2["ObjID"]])) {
+							
+							$codeArray[$row2["ObjID"]] = new DynamicObjectCode();
+							
 						}
-	
+						
+						if($row2["IsHeader"]) {
+							
+							$codeArray[$row2["ObjID"]]->header = $row2["Code"];
+							
+						} elseif($row2["IsFooter"]) {
+								
+							$codeArray[$row2["ObjID"]]->footer = $row2["Code"];
+							
+						} else {
+
+							$codeArray[$row2["ObjID"]]->allFunctions = $codeArray[$row2["ObjID"]]->allFunctions . $row2["Code"];
+						}
+
 					}
-	
-					$NewCodeSegment = $CodeHeader . $NewCodeSegment . $CodeFooter;
-	
-					$GLOBALS['globalref'][6]->ObjectCode = $NewCodeSegment . $GLOBALS['globalref'][6]->ObjectCode;
-				}
-	
-			}
-	
-	
+
+					foreach($codeArray as $Key=>$Object) {
+						
+						$GLOBALS['globalref'][6]->ObjectCode = $Object->header . $Object->allFunctions . $Object->footer . $GLOBALS['globalref'][6]->ObjectCode;
+							
+					}
+
+					
+				} 
+				
+
 			//Load Constants
 			foreach($ModArray as $ModID=>$value)
 			{
@@ -809,13 +1103,13 @@ class ODOSession {
 				if($ModID != 1) {
 					$GLOBALS['globalref'][2]->LoadModuleConstantsModID($ModID);
 				}
-	
+
 			}
-	
+
 			return true;
 		}
 	}
-	
+
 	/**
 	 * Simple function to generate a CSRF token
 	 * The token is stored in the session and can
@@ -825,21 +1119,21 @@ class ODOSession {
 	 * @return string token
 	 */
 	public function generateCSRFToken($blockLoadingPage, $pageName, $objectName, $fnName) {
-	
+		
 		$ourKey = $this->buildCSRFTokenKey($pageName, $objectName, $fnName);
-	
+		
 		$ourPageCSRFArray = array();
-	
+		
 		if(isset($this->csrfTokenArray[$ourKey])) {
 			$ourPageCSRFArray = $this->csrfTokenArray[$ourKey];
-		}
-	
+		} 
+		
 		$csrf = $GLOBALS['globalref'][7]->randomstring(75);
-	
+		
 		$ourPageCSRFArray[$csrf] = $blockLoadingPage;
-	
+		
 		$this->csrfTokenArray[$ourKey] = $ourPageCSRFArray;
-	
+		
 		return $csrf;
 	}
 	
@@ -853,7 +1147,7 @@ class ODOSession {
 	 */
 	public function checkForAnyCSRFToken($clearIfFound, $pageName, $objectName, $fnName) {
 		$this->checkCSRFToken(null, $clearIfFound, $pageName, $objectName, $fnName, true);
-	
+		
 	}
 	
 	/**
@@ -863,29 +1157,29 @@ class ODOSession {
 	 * @return boolean true if found otherwise false
 	 */
 	public function checkCSRFToken($checkingCsrf, $clearIfFound, $pageName, $objectName, $fnName, $checkAll=FALSE) {
-	
+		
 		$ourKey = $this->buildCSRFTokenKey($pageName, $objectName, $fnName);
-	
+		
 		if(isset($this->csrfTokenArray[$ourKey])) {
-				
+			
 			$ourIndex = 0;
 			$ourCSRFArray =& $this->csrfTokenArray[$ourKey];
-				
+			
 			foreach($ourCSRFArray as $csrf=>$blocked) {
-	
+				
 				if($csrf == $checkingCsrf || $checkAll) {
-						
+					
 					if($clearIfFound) {
 						array_splice($ourCSRFArray,$ourIndex);
 					}
-						
+					
 					return true;
 				}
-	
+				
 				$ourIndex++;
 			}
 		}
-	
+		
 		return false;
 	}
 	
@@ -896,83 +1190,83 @@ class ODOSession {
 	 * contain the token
 	 */
 	private function verifyCSRFTokenInRequest() {
-	
+		
 		$checkingcsrf = null;
-	
+		
 		if(isset($_POST["odowebcsrf"])) {
 			$checkingcsrf = $_POST["odowebcsrf"];
 		} else if(isset($_GET["odowebcsrf"])) {
 			$checkingcsrf = $_GET["odowebcsrf"];
 		}
-	
+		
 		$ourKey = $this->buildCSRFTokenKey($this->pg, $this->ObjectName, $this->FunctionName);
 		$ourAllPagesKey = $this->buildCSRFTokenKey(null, $this->ObjectName, $this->FunctionName);
-	
-		if((isset($this->csrfTokenArray[$ourKey]))&&(count($this->csrfTokenArray[$ourKey])>0)) {
-				
-			$ourCsrfArray =& $this->csrfTokenArray[$ourKey];
-				
+		
+ 		if((isset($this->csrfTokenArray[$ourKey]))&&(count($this->csrfTokenArray[$ourKey])>0)) {
+			
+ 			$ourCsrfArray =& $this->csrfTokenArray[$ourKey];
+			
 			if(($checkingcsrf != null) && (isset($ourCsrfArray[$checkingcsrf]))) {
-	
+				
 				//delete it
 				foreach($ourCsrfArray as $csrf=>$blocked) {
-	
+				
 					if($csrf == $checkingcsrf) {
 							
 						array_splice($ourCsrfArray,current($ourCsrfArray));
-							
+						 
 					}
 				}
-	
-	
+				
+				
 			} else {
-	
-				//it was not found so if any of the tokens exist
+				
+				//it was not found so if any of the tokens exist 
 				//for this then we need to check if we should block the
 				//request
 				foreach($ourCsrfArray as $curCsrf=>$block) {
 					if($block) {
 						header("HTTP/1.0 403 Forbidden");
-	
+						
 						$this->errorBadRequest("403", "Forbidden Bad CSRF Token");
-	
+						
 					}
 				}
 			}
-		}
-	
+		} 
+		
 		if(isset($this->csrfTokenArray[$ourAllPagesKey])) {
-				
+			
 			$ourCsrfArray =& $this->csrfTokenArray[$ourAllPagesKey];
-				
+			
 			if(isset($ourCsrfArray[$checkingcsrf])) {
-					
+			
 				//delete it
 				foreach($ourCsrfArray as $csrf=>$blocked) {
-	
+				
 					if($csrf == $checkingcsrf) {
 							
 						array_splice($ourCsrfArray,current($ourCsrfArray));
-	
+						
 					}
 				}
-					
+			
 			} else {
-					
+			
 				//it was not found so if any of the tokens exist
 				//for this then we need to check if we should block the
 				//request
 				foreach($ourCsrfArray as $curCsrf=>$block) {
 					if($block) {
 						header("HTTP/1.0 403 Forbidden");
-							
+			
 						$this->errorBadRequest("403", "Forbidden Bad CSRF Token");
-							
+			
 					}
 				}
 			}
 		}
-	
+		
 	}
 	
 	/**
@@ -982,27 +1276,27 @@ class ODOSession {
 	 * @param string $ErrorResponse
 	 */
 	private function errorBadRequest($ErrorResponseCode, $ErrorResponse) {
-	
+		
 		$query = "select * from ODOPages WHERE PageName='{$ErrorResponseCode}'";
 		$result = $GLOBALS['globalref'][1]->Query($query);
-	
+		
 		if(!mysqli_num_rows($result)) {
 			echo("{$ErrorResponseCode} {$ErrorResponse}");
 		} else {
 			$row = mysqli_fetch_assoc($result);
 			echo($row["PageContent"]);
 		}
-	
+		
 		$Comment = "{$ErrorResponseCode} {$ErrorResponse} pg={$this->EscapedVars["pg"]}";
-	
+		
 		if($this->ObjectName != "") {
 			$Comment .= " ob={$this->ObjectName}";
 		}
-	
+		
 		if($this->FunctionName != "") {
 			$Comment .= " fn={$this->FunctionName}";
 		}
-	
+		
 		$GLOBALS['globalref'][4]->LogEvent("{$ErrorResponseCode}ERRORRESPONSE", $Comment, 5);
 		exit(1);
 	}
@@ -1017,17 +1311,17 @@ class ODOSession {
 	private function buildCSRFTokenKey($pageName, $objectName, $fnName) {
 		//pageName can not be empty
 		//if it is empty then all requests will be blocked
-	
+		
 		$ourKey = "ALLPAGES";
-	
+		
 		if((isset($pageName)) && ($pageName!=null)) {
-				
+			
 			if(!is_numeric($pageName)) {
 				//locate it in the common name pages
 				if(isset($this->CommonPageNames[$pageName])) {
-						
+					
 					$pageName = $this->CommonPageNames[$pageName];
-						
+					
 				} else {
 					trigger_error("Page ID passed was not found in current authorized pages. user will never be able to authenticate csrf!",E_ODOWEB_APPERROR);
 				}
@@ -1035,43 +1329,59 @@ class ODOSession {
 				//just in case integer was passed in case of string
 				$pageName = strval($pageName);
 			}
-				
+			
 			$ourKey = $pageName;
 		}
-	
-		if((isset($objectName)) && ($objectName!=null) && (strlen(objectName)>0)) {
+		
+		if((isset($objectName)) && ($objectName!=null) && (strlen($objectName)>0)) {
 			$ourKey .= $objectName;
 		}
-	
+		
 		if((isset($fnName)) && ($fnName!=null) && (strlen($fnName)>0)) {
 			$ourKey .= $fnName;
 		}
-	
-		$GLOBALS['globalref'][4]->LogEvent("ODOWEBGENCSRF", "GenKey:{$ourKey}", 5);
-	
+		
+		
+		
 		return $ourKey;
 	}
 	
 	
 	function __sleep() {
-	
-		//unset($this->SerializedObjects);
-		//$this->SerializedObjects = array();
-	
-	
+
+
+
 		foreach($this->UserObjectArray as $Name=>$Obj)
 		{
 			$this->SerializedObjects[$Name] = serialize($Obj);
-	
-	
+
+
 		}
+		
+		if((defined('LOGSESSIONTIME'))&&(LOGSESSIONTIME == 1)) {
+			$curTime = microtime(true);
+			$totalTime = $curTime - $this->sessionObjStartTime;
+					
+			$this->logSessionTimeMessage .= " Total time of Session object:{$totalTime}";
+			
+			error_log($this->logSessionTimeMessage);
+
+			$this->logSessionTimeMessage = "";
+		}
+		
+		$this->cachedObjectCodePath = "";
+		$this->cachedPageCodePath = "";
+		
 		unset($this->UserObjectArray);
-		//echo count($this->SerializedObjects);
 		return( array_keys( get_object_vars( $this ) ) );
 	}
-	
-	
+
+
 	function __wakeup() {
+		
+		$this->sessionObjStartTime = microtime(true);
+		$this->logSessionTimeMessage = "";
+		
 		$GLOBALS['globalref'][0] =& $this;
 		$this->pg = -1;
 		$this->ob = -1;
@@ -1081,9 +1391,12 @@ class ODOSession {
 		$this->ObjectOnlyOutput = 0;
 		$this->EscapedVars = array();
 		$this->UserObjectArray = array();
+		
 	}
-	
+
+
 }
+
 
 
 
@@ -1149,6 +1462,9 @@ class ODODB {
 
 	function Query($myquery) {
 
+		if((defined('LOGDBQUERYTIME'))&&(LOGDBQUERYTIME == 1)) {
+			$startTime = microtime(true);
+		}
 		
 		$result = $this->mysqli->query($myquery);
 		
@@ -1157,13 +1473,27 @@ class ODODB {
 			trigger_error('Query failed at 103a: Query:' . $myquery . "Error:" . $this->mysqli->errno . ":" . $this->mysqli->error, E_USER_ERROR);
 		} 
 	
+
+		if((defined('LOGDBQUERYTIME'))&&(LOGDBQUERYTIME == 1)) {
+			$endTime = microtime(true);
+			$diffTime = $endTime - $startTime;
+			
+			$message = "Total Query Time:{$diffTime} for query: {$myquery}";
+			
+			error_log($message);
+			
+		}
+		
 		return $result;
 
 	}
 
 	function MultiQuery($myquery) {
 	
-	
+		if((defined('LOGDBQUERYTIME'))&&(LOGDBQUERYTIME == 1)) {
+			$startTime = microtime(true);
+		}
+		
 		$result = mysqli_multi_query($this->mysqli, $myquery);
 	
 		if(!$result) {
@@ -1171,6 +1501,15 @@ class ODODB {
 			trigger_error('Query failed at 103a: Query:' . $myquery . "Error:" . $this->mysqli->errno . ":" . $this->mysqli->error, E_USER_ERROR);
 		}
 	
+		if((defined('LOGDBQUERYTIME'))&&(LOGDBQUERYTIME == 1)) {
+			$endTime = microtime(true);
+			$diffTime = $endTime - $startTime;
+				
+			$message = "Total Query Time:{$diffTime} for query: {$myquery}";
+			
+			error_log($message);
+		}
+		
 		return $result;
 	
 	}
@@ -2625,8 +2964,29 @@ class ODOUser {
                 
             }
             
+            //sort by name
+            if(sizeof($this->groups)>0) {
+            	ksort($this->groups);
+            }
+            
         }
     
+    }
+    
+    /**
+     * Builds an array of user group ids sorted by Name
+     * This is used as a partial to the key used in page caching
+     */
+    public function GetUserGroupIDArray() {
+    	
+    	$groupKey = "";
+    	
+    	foreach($this->groups as $Name=>$GID) {
+    		$groupKey .= $GID;	
+    	}
+    	
+    	return $groupKey;
+    	
     }
 
     /*********************************************
@@ -2883,6 +3243,13 @@ class ODOLogging {
 		}
 		
 		$debugArray = debug_backtrace();
+		
+		$stackTraceStr = print_r($debugArray, true);
+		
+		$message = $ActionCode . $Comment . ":" . $stackTraceStr;
+		
+		error_log($message);
+		
 	}
 	
 	
@@ -2955,15 +3322,55 @@ class ODOLogging {
 	}
 
     /*******************************************
-    *Logs the event
+    *Logs the event object passed
     *@param LogEvent LogEventObject
+    *@param OverrideSystemLog boolean
     *******************************************/
-    private function LogEventObject($LogEvent) {
+    public function LogEventObject($LogEvent, $OverrideSystemLog=false) {
         
-        $Query = "insert into ODOLogs ( UID, ActionDone, Comment, Severity, IP ) values ( {$LogEvent->UID}, '{$LogEvent->ActionCode}', '{$LogEvent->Comment}', {$LogEvent->SevLevel}, '{$_SERVER['REMOTE_ADDR']}')";
-		
-        $result = $GLOBALS['globalref'][1]->Query($Query);
+    	$remoteIP = $_SERVER['REMOTE_ADDR'];
+        $forwardedFor = "";
+        $instanceId = "";
         
+        if((defined('FORWARDFORHEADER')) && (strlen(FORWARDFORHEADER)>0) && (isset($_SERVER['HTTP_' . FORWARDFORHEADER]))) {
+        	$forwardedFor = $_SERVER['HTTP_' . FORWARDFORHEADER];
+        }
+        
+        if((defined('INSTANCEIDHEADER')) && (strlen(INSTANCEIDHEADER)>0) && (isset($_SERVER['HTTP_' . INSTANCEIDHEADER]))) {
+        	$instanceId = $_SERVER['HTTP_' . INSTANCEIDHEADER];
+        }
+        
+    	//if user set the constant to use the system log instead of odo's system logger then
+    	//log to that instead. We still provide an override in case they only want to log certain 
+    	//severities or directly
+    	if((defined("USESYSTEMLOG")) && (USESYSTEMLOG == 1) && (!$OverrideSystemLog)) {
+    		
+    		$message = "UID: {$LogEvent->UID}, Action: {$LogEvent->ActionCode}, SevLevel: {$LogEvent->SevLevel}, RIP: {$remoteIP}, Comment: {$LogEvent->Comment}, ForwardedFor: {$forwardedFor}";
+    		
+    		error_log($message);
+    		
+    	} else {
+    		
+    		$Query = "insert into ODOLogs ( UID, ActionDone, Comment, Severity, IP, ForwardedFor, InstanceId, ModID ) values ( {$LogEvent->UID}, '{$LogEvent->ActionCode}', '{$LogEvent->Comment}', {$LogEvent->SevLevel}, '{$remoteIP}'";
+    		
+    		if(strlen($forwardedFor) > 0 ) {
+    			$Query .= ", '{$forwardedFor}'";
+    		} else {
+    			$Query .= ", NULL";
+    		}
+    		
+    		if(strlen($instanceId) > 0 ) {
+    			$Query .= ", '{$instanceId}'";
+    		} else {
+    			$Query .= ", NULL";
+    		}
+    		
+    		$Query .= ", {$LogEvent->ModID})";
+    		
+    		$result = $GLOBALS['globalref'][1]->Query($Query);
+    		
+    	}
+         
     }
 
     /*********************************************
@@ -2989,8 +3396,7 @@ class ODOLogging {
     		curl_setopt($ch, CURLOPT_URL,REMOTEEMAILSERVERURL);
     		curl_setopt($ch, CURLOPT_POST, 1);
     		curl_setopt($ch, CURLOPT_POSTFIELDS,$curlPost);
-    		 
-    		 
+    		     		 
     		// receive server response ...
     		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     		 
@@ -3615,6 +4021,7 @@ class ODOLogEvent {
     var $Comment;
     var $ActionCode;
     var $SevLevel;
+    var $ModID=0;
 
 }
 
