@@ -17,11 +17,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+include "enc.php";
 
-define("DBIPADD", "127.0.0.1");
-define("DBUNAME", "TESTACCT");
-define("DBPWORD", "testacct");
-define("DBNAME", "BPTPOINT");
+$enc = new ourConstants();
+
+define("DBIPADD", $enc->getDbipadd());
+define("DBUNAME", $enc->getDbuname());
+define("DBPWORD", $enc->getDbpword());
+define("DBNAME", $enc->getDbname());
 
 
 	//Random String generation for temp password 
