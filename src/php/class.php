@@ -653,7 +653,7 @@ class ODOSession {
 	 * Builds the call user func call
 	 * for when object and function is passed into request
 	 */
-	private function BuildCalUserFuncScript() {
+	private function BuildCallUserFuncScript() {
 		
 		$ScriptToRun = "";
 		
@@ -721,11 +721,11 @@ class ODOSession {
 			$callEval = false;
 		}
 		
-		$ScriptToRun = "";
+		$GLOBALS['globalref'][6]->ScriptToRun = "";
 		
 		//load object code first
 		if($callEval) {
-			$ScriptToRun = $GLOBALS['globalref'][6]->ObjectCode;
+			$GLOBALS['globalref'][6]->ScriptToRun = $GLOBALS['globalref'][6]->ObjectCode;
 		} elseif(($GLOBALS['globalref'][6]->IsDynamic)&&(is_file($this->cachedObjectCodePath))) {
 			//else include the cached version of object code
 			include $this->cachedObjectCodePath;
@@ -733,19 +733,19 @@ class ODOSession {
 		
 		//build wakeup deserialize script next
 		if($GLOBALS['globalref'][6]->IsDynamic) {
-			$ScriptToRun .= $this->BuildWakeupAllObjectsScript();
+			$GLOBALS['globalref'][6]->ScriptToRun .= $this->BuildWakeupAllObjectsScript();
 		}
 		
 		//make call to user function if call requested
 		if(($this->ObjectName != "") && ($this->FunctionName != ""))
 		{
-			$ScriptToRun .= $this->BuildCalUserFuncScript();
+			$GLOBALS['globalref'][6]->ScriptToRun .= $this->BuildCallUserFuncScript();
 		}
 		
 		//check if object only output and add content to output.
 		if((!$this->ObjectOnlyOutput)&&($callEval)) {
 			
-			$ScriptToRun .= $GLOBALS['globalref'][6]->Content;
+			$GLOBALS['globalref'][6]->ScriptToRun .= $GLOBALS['globalref'][6]->Content;
 			
 		}
 		
@@ -759,7 +759,14 @@ class ODOSession {
 		//call eval if needed
 		if($callEval) {
 			
-			$evalReturn = eval($ScriptToRun);
+			try {
+				$ScriptToRun = $GLOBALS['globalref'][6]->ScriptToRun;
+				$evalReturn = eval($ScriptToRun);
+			} catch(ParseError $perror) {
+				$evalReturn = false;
+				$GLOBALS['globalref'][4]->LogEvent("PARSEERROR", "Line:" . $perror->getLine() . ":" . $perror->getMessage() , 1);
+				
+			}
 			
 		} else if(($this->pageLoadedFromCache) && (!$this->ObjectOnlyOutput)) {
 			
@@ -795,7 +802,7 @@ class ODOSession {
 			$filename .= ".txt";
 			
 			
-			file_put_contents($filename, $ScriptToRun);
+			file_put_contents($filename, $GLOBALS['globalref'][6]->ScriptToRun);
 		}
 		
 		//build the cache
@@ -844,8 +851,7 @@ class ODOSession {
 		$pathBeg = OURCACHEPATH . $this->pg . $gidKey;
 		$staticPath = $pathBeg . ".html";
 		$dynamicPath = $pathBeg . ".php";
-		$dynamicObjPath = $pathBeg . "_OB.php";
-				
+		$dynamicObjPath = $pathBeg . "_OB.php";	
 		//if we find the cached page
 		//check if page is dynamic and if it is check if we found
 		//the dynamic cached object code for the page
@@ -944,9 +950,9 @@ class ODOSession {
 			//exit
 		}
 		
-		$query = "select ODOPages.PageContent, ODOPages.IsDynamic, ODOPages.IsAdmin, ODOGACL.GID, ODOUserGID.UID from ODOPages, ODOGACL, ODOUserGID where ( ( ODOPages.PageID = ";
+		$query = "select ODOPages.PageContent, ODOPages.IsDynamic, ODOPages.IsAdmin, ODOPages.ModID, Modules.ModName, ODOGACL.GID, ODOUserGID.UID from ODOPages, Modules, ODOGACL, ODOUserGID where ( ( ODOPages.PageID = ";
 		
-		$query = $query . $this->pg . " ) AND ( ODOPages.PageID = ODOGACL.PageID ) AND ( ODOGACL.GID = ODOUserGID.GID ) AND ( ODOUserGID.UID = ";
+		$query = $query . $this->pg . " ) AND (ODOPages.ModID = Modules.ModID) AND ( ODOPages.PageID = ODOGACL.PageID ) AND ( ODOGACL.GID = ODOUserGID.GID ) AND ( ODOUserGID.UID = ";
 		
 		$query = $query . $GLOBALS['globalref'][3]->getUID() . ") )";
 		
@@ -965,6 +971,8 @@ class ODOSession {
 		$GLOBALS['globalref'][6]->PageID = $this->pg;
 		$GLOBALS['globalref'][6]->IsDynamic = $row["IsDynamic"];
 		$GLOBALS['globalref'][6]->IsAdmin = $row["IsAdmin"];
+		$GLOBALS['globalref'][6]->ModuleID = $row["ModID"];
+		$GLOBALS['globalref'][6]->ModuleName = $row["ModName"];
 		
 		//check object permission
 		if($row["IsDynamic"]) {
@@ -1409,20 +1417,26 @@ class ODODB {
 	private $mysqli;
 	
 	//DB connection info
-	private $dbipadd = "127.0.0.1";
-	private $dbuname = "TESTACCT";
-	private $dbpword = "testacct";
-	private $dbname = "BPTPOINT";
+	private $dbipadd = "";
+	private $dbuname = "";
+	private $dbpword = "";
+	private $dbname = "";
 
 	
     private $inTransaction = false;
     
 	
 	function __construct() {
-	
-        	global $globalref;
-        	$globalref[1] = &$this;
-    	}
+		$enc = new ourConstants();
+		
+		$this->dbipadd = $enc->getDbipadd();
+		$this->dbuname = $enc->getDbuname();
+		$this->dbpword = $enc->getDbpword();
+		$this->dbname = $enc-getDbname();
+		
+        global $globalref;
+        $globalref[1] = &$this;
+    }
 
 	function EscapeMe($Variable) {
 		$Rvalue = "";
@@ -1544,7 +1558,7 @@ class ODODB {
         
         $this->inTransaction = false;
 		$this->mysqli->rollback();
-        
+		$this->mysqli->autocommit(true);
         $GLOBALS['globalref'][4]->processAfterTransaction(true);
         
     }
@@ -1763,7 +1777,6 @@ class ODOUser {
 	private $rnamefirst;
 	private $LastLoginTime;
 	private $IsTemp;
-	private $aesKey = "";
 	private $SHA256h = "";
 	private $SHA512h = "";
 	private $iv = "";
@@ -1921,6 +1934,8 @@ class ODOUser {
 	
 	function __construct() {
 		
+		$enc = new ourConstants();
+		
 		global $globalref;
         	$globalref[3] = &$this;
 		$this->UID = 0;
@@ -1933,8 +1948,8 @@ class ODOUser {
 		$this->rnamefirst = "";
 		$this->IsTemp = 0;
 		$this->LastLoginTime = "0000-00-00 00:00:00";
-		$this->SHA256h = '$5$rounds=5000$754aabcanhjwliov92tyvah4i$';
-		$this->SHA512h = '$6$rounds=5000$a4g2hjwtOK9kA3pwcnjy3sxp8$';	
+		$this->SHA256h = $enc->getSHA256h();
+		$this->SHA512h = $enc->getSHA512h();	
 		$this->iv = "";
         $this->groups = array();
 		
@@ -1957,7 +1972,9 @@ class ODOUser {
 		// out before calling this function
 		if(!$this->LoggedIn) { 
 
-			$query = "select * from LoggedIn where UID=" . $UID . " AND SessionID='" . session_id() . "' AND IPAdd='" . $_SERVER['REMOTE_ADDR'] . "'";
+			$remoteIP = $GLOBALS['globalref'][7]->getRemoteIP();
+			
+			$query = "select * from LoggedIn where UID=" . $UID . " AND SessionID='" . session_id() . "' AND IPAdd='" . $remoteIP . "'";
 			$result = $GLOBALS['globalref'][1]->Query($query);
 			if(!mysqli_num_rows($result)) {
 
@@ -2160,7 +2177,9 @@ class ODOUser {
 
 					$result = $GLOBALS['globalref'][1]->Query($query);
 				
-					$message = "There was a password reset requested for " . SERVERNAME . ". at time=" . date(DATE_RFC822) . " from address=" . $_SERVER['REMOTE_ADDR'] . ". Please use the password found below to log back into your account. \n \n Password: " . $temppass . "\n\n";
+					$remoteIP = $GLOBALS['globalref'][7]->getRemoteIP();
+						
+					$message = "There was a password reset requested for " . SERVERNAME . ". at time=" . date(DATE_RFC822) . " from address=" . $remoteIP . ". Please use the password found below to log back into your account. \n \n Password: " . $temppass . "\n\n";
 				
 					$headers  = 'MIME-Version: 1.0' . "\n";
 					$headers .= 'Content-type: text/html; charset=iso-8859-1' . "\n";
@@ -2239,8 +2258,7 @@ class ODOUser {
 
 			} else {
 
-				$PageOut = "<html><Head><title>Self Password Reset</title>\n<link rel='stylesheet' type='text/css' href='css/global.css'>\n</head><body><div class=\"loginHeader\"></div><div class=\"loginLeft\"></div>
-<div class=\"loginCenter\">";
+				$PageOut = "<html><Head><title>Self Password Reset</title>\n<link rel='stylesheet' type='text/css' href='css/global.css'>\n</head><body><div class=\"loginHeader\"></div><div class=\"loginLeft\"></div><div class=\"loginCenter\">";
 
 				//if no UNAME then prompt.
 				if(isset($GLOBALS['globalref'][0]->EscapedVars["UNAME"])) {
@@ -2491,7 +2509,11 @@ class ODOUser {
 	function LogoutPublic() {
 		if(isset($GLOBALS['globalref'][0]->EscapedVars["PromptUser"])) {
 
-			$this->Logout($GLOBALS['globalref'][0]->EscapedVars["PromptUser"]);
+			$testVal = boolval($GLOBALS['globalref'][0]->EscapedVars["PromptUser"]);
+			
+			
+			$this->Logout(boolval($GLOBALS['globalref'][0]->EscapedVars["PromptUser"]));
+			
 		} else { 
 
 			$this->Logout(true);
@@ -2785,7 +2807,9 @@ class ODOUser {
 
 					}
 
-					$query = "insert into LoggedIn (UID,SessionID,IPAdd) values(" . $row["UID"] . ",'" . session_id() . "','" . $_SERVER['REMOTE_ADDR'] . "')";
+					$remoteIP = $GLOBALS['globalref'][7]->getRemoteIP();
+					
+					$query = "insert into LoggedIn (UID,SessionID,IPAdd) values(" . $row["UID"] . ",'" . session_id() . "','" . $remoteIP . "')";
 					$result = $GLOBALS['globalref'][1]->Query($query);
 				
 					
@@ -2930,7 +2954,9 @@ class ODOUser {
 			return true;
 		}
 
-		$query = "select * from LoggedIn where UID=" . $this->UID . " and SessionID='" . session_id() . "' and IPAdd='" . $_SERVER['REMOTE_ADDR'] . "'";
+		$remoteIP = $GLOBALS['globalref'][7]->getRemoteIP();
+		
+		$query = "select * from LoggedIn where UID=" . $this->UID . " and SessionID='" . session_id() . "' and IPAdd='" . $remoteIP . "'";
 		$result = $GLOBALS['globalref'][1]->Query($query);
 
 		if(mysqli_num_rows($result))
@@ -3190,20 +3216,33 @@ class ODOUser {
 		return $RValue;
 	}
 	
+	/**
+	 * Reloads the user's groups
+	 */
+	public function reloadGroups() {
+		
+		//reset
+		$this->ClearUserGroups();
+		
+		//load
+		$this->LoadUserGroups();
+		
+	}
+	
 	function __sleep() {
 		$this->SHA256h = "";
 		$this->SHA512h = "";
-		$this->aesKey = "";
 		return( array_keys( get_object_vars( $this ) ) );
 	}
 	
 	function __wakeup() {
+		$enc = new ourConstants();
+		
 		$GLOBALS['globalref'][3] =& $this;
-		$this->aesKey = '74abuivZ2Lt921bnWgD0x9';
-		$this->SHA256h = '$5$rounds=5000$754aabcanhjwliov92tyvah4i$';
-		$this->SHA512h = '$6$rounds=5000$a4g2hjwtOK9kA3pwcnjy3sxp8$';	
-
+		$this->SHA256h = $enc->getSHA256h();
+		$this->SHA512h = $enc->getSHA512h();
 	}
+	
 }
 
 
@@ -3328,13 +3367,10 @@ class ODOLogging {
     *******************************************/
     public function LogEventObject($LogEvent, $OverrideSystemLog=false) {
         
-    	$remoteIP = $_SERVER['REMOTE_ADDR'];
         $forwardedFor = "";
         $instanceId = "";
         
-        if((defined('FORWARDFORHEADER')) && (strlen(FORWARDFORHEADER)>0) && (isset($_SERVER['HTTP_' . FORWARDFORHEADER]))) {
-        	$forwardedFor = $_SERVER['HTTP_' . FORWARDFORHEADER];
-        }
+        $remoteIP = $GLOBALS['globalref'][7]->getRemoteIP();
         
         if((defined('INSTANCEIDHEADER')) && (strlen(INSTANCEIDHEADER)>0) && (isset($_SERVER['HTTP_' . INSTANCEIDHEADER]))) {
         	$instanceId = $_SERVER['HTTP_' . INSTANCEIDHEADER];
@@ -3702,6 +3738,8 @@ class ODOPage {
 	var $IsAdmin;
 	var $ScriptToRun;
 	var $CustomErrorPage;
+	var $ModuleID;
+	var $ModuleName;
 	
 	function __construct() {
 		$GLOBALS['globalref'][6] =& $this;
@@ -3712,6 +3750,8 @@ class ODOPage {
 		$this->IsAdmin = 0;
 		$this->CustomErrorPage = null;
 		$this->ScriptToRun = "";
+		$this->ModuleID = 0;
+		$this->ModuleName = "";
         $this->LoadCustomErrorPage();
 	}
 
@@ -3735,6 +3775,9 @@ class ODOPage {
 		$this->ScriptToRun = "";
 		$this->IsDynamic = 0;
 		$this->IsAdmin = 0;
+		$this->ModuleID = 0;
+		$this->ModuleName = "";
+		
 		return( array_keys( get_object_vars( $this ) ) );
 	}
 	
@@ -3746,6 +3789,9 @@ class ODOPage {
 		$this->ScriptToRun = "";
 		$this->IsDynamic = 0;
 		$this->IsAdmin = 0;
+		$this->ModuleID = 0;
+		$this->ModuleName = "";
+		
 	}
 }
 
@@ -3755,9 +3801,10 @@ class ODOUtil {
 	private $aesKey;
 
 	function __construct() {
+		$enc = new ourConstants();
 		
 		$GLOBALS['globalref'][7] =& $this;
-		$this->aesKey = 'J5LgnI20Vdx3yQPdJsGzM45lpw3cZM43';
+		$this->aesKey = $enc->getAesKey();
 		
 	}
 	
@@ -3969,14 +4016,43 @@ class ODOUtil {
 		
 	}
 	
+	function getRemoteIP() {
+		
+		$remoteIP = $_SERVER['REMOTE_ADDR'];
+		$forwardedFor = "";
+		$instanceId = "";
+		
+		if((defined('FORWARDFORHEADER')) && (strlen(FORWARDFORHEADER)>0) && (isset($_SERVER['HTTP_' . FORWARDFORHEADER]))) {
+			$forwardedFor = $_SERVER['HTTP_' . FORWARDFORHEADER];
+			 
+			$pos = stripos($forwardedFor, ",");
+			 
+			if(!$pos) {
+		
+				$remoteIP = trim($forwardedFor);
+		
+			} else {
+		
+				$remoteIP = trim(substr($forwardedFor, 0, $pos));
+		
+			}
+			 
+		}
+		
+		return $remoteIP;
+		
+	}
+	
 	function __sleep() {
 		$this->aesKey = "";
 		return( array_keys( get_object_vars( $this ) ) );
 	}
 	
 	function __wakeup() {
+		$enc = new ourConstants();
+		
 		$GLOBALS['globalref'][7] =& $this;
-		$this->aesKey = 'J5LgnI20Vdx3yQPdJsGzM45lpw3cZM43';
+		$this->aesKey = $enc->getAesKey();
 	}
 	
 }

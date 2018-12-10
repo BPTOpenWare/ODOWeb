@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Copyright (C) 2016  Bluff Point Technologies LLC
  *
@@ -16,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+include "enc.php";
 include "class.php";
 //Create ODODB object
 $ODODBO = new ODODB;
@@ -166,7 +165,9 @@ function SelfPasswordResetPublic() {
 				$headers .= 'Reply-To:  ' . REGREPLYEMAIL . "\n";
 				$headers .= 'X-Mailer: ODOWeb' . "\n";
 
-				$message = "There was a password reset requested for " . SERVERNAME . ". at time=" . date(DATE_RFC822) . " from address=" . $_SERVER['REMOTE_ADDR'] . ". Please use the password found below to log back into your account. \n \n Password: " . $temppass . "\n\n";
+				$remoteIP = $_SESSION["ODOUtil"]->getRemoteIP();
+				
+				$message = "There was a password reset requested for " . SERVERNAME . ". at time=" . date(DATE_RFC822) . " from address=" . $remoteIP . ". Please use the password found below to log back into your account. \n \n Password: " . $temppass . "\n\n";
 				
 				mail($tempemail, "Password reset on " . SERVERNAME, $message, $headers) or $GLOBALS['globalref'][4]->LogEvent("EMAILERROR", "Mail sending failed for password reset!", 4);
 
@@ -475,7 +476,9 @@ function Login() {
 			
 		} else {
 				
-			$query = "insert into LoggedIn (UID,SessionID,IPAdd) values(" . $UID . ",'" . session_id() . "','" . $_SERVER['REMOTE_ADDR'] . "')";
+			$remoteIP = $_SESSION["ODOUtil"]->getRemoteIP();
+			
+			$query = "insert into LoggedIn (UID,SessionID,IPAdd) values(" . $UID . ",'" . session_id() . "','" . $remoteIP . "')";
 			$result = $GLOBALS['globalref'][1]->Query($query);
 
 			if(!($GLOBALS['globalref'][1]->GetNumRowsAffected() > 0)) 

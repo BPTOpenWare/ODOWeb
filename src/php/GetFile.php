@@ -1,7 +1,4 @@
 <?php
-//GetImage.php
-
-
 /**
  * Copyright (C) 2016  Bluff Point Technologies LLC
  *
@@ -18,6 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+//GetImage.php
 
 if((!isset($_GET["FID"]))&&(!isset($_POST["FID"])) ) {
 	header("HTTP/1.0 404 Not Found");
@@ -26,17 +24,21 @@ if((!isset($_GET["FID"]))&&(!isset($_POST["FID"])) ) {
 }
 
 
-define("DBIPADD", "127.0.0.1");
-define("DBUNAME", "TESTACCT");
-define("DBPWORD", "testacct");
-define("DBNAME", "BPTPOINT");
+$enc = new ourConstants();
+
+define("DBIPADD", $enc->getDbipadd());
+define("DBUNAME", $enc->getDbuname());
+define("DBPWORD", $enc->getDbpword());
+define("DBNAME", $enc->getDbname());
 
 
+$link = new mysqli(DBIPADD, DBUNAME, DBPWORD, DBNAME);
 
-$link = mysql_connect(DBIPADD, DBUNAME, DBPWORD)
-			or die('Could not connect: ' . mysql_error());
+if($link->connect_errno) {
+	die('Could not connect: ' . $link->connect_errno . ":" . $link->connect_error);
+}
 
-mysql_select_db(DBNAME) or trigger_error('Could not select database');
+
 
 //ID flag is just used to tell if we have an ID.
 
@@ -51,22 +53,22 @@ if(get_magic_quotes_gpc()) {
 	$Rvalue = stripslashes($Rvalue);
 }
 
-$Rvalue = mysql_real_escape_string($Rvalue, &$link);
+$Rvalue = $link->real_escape_string($Rvalue);
 $Rvalue = intval($Rvalue);
 
 $query = "SELECT FID, BFile, PermFlag, Type, Name, Size FROM ODOFiles, FileTypes WHERE ODOFiles.FTypeID=FileTypes.FTypeID AND ODOFiles.FID=" . $Rvalue;
 
 
-$result = mysql_query($query) or trigger_error('Query failed at 103a: Query:' . $myquery . "Error:" . mysql_error(), E_USER_ERROR);
+$result = $link->query($query) or trigger_error('Query failed at 103a: Query:' . $myquery . "Error:" . $link->error, E_USER_ERROR);
 
-if(!mysql_num_rows($result)) {
+if(!mysqli_num_rows($result)) {
 	header("HTTP/1.0 404 Not Found");
 	echo("404 File Not Found!");
-	mysql_close($link);
+	$link->close();
 	exit(1);
 }
 
-$row = mysql_fetch_assoc($result);
+$row = mysqli_fetch_assoc($result);
 
 if($row["PermFlag"] == 1) {
 	include "class.php";
@@ -99,9 +101,9 @@ if($row["PermFlag"] == 1) {
 
 	$query = "SELECT ODOFiles.Name FROM ODOFiles, GroupsForFiles, ODOGroups, ODOUserGID WHERE ODOUserGID.UID=" . $_SESSION["ODOUserO"]->getUID() . " AND ODOUserGID.GID=ODOGroups.GID AND ODOGroups.GID=GroupsForFiles.GID AND GroupsForFiles.FID=" . $row["FID"];
 
-	$result2 = mysql_query($query) or trigger_error('Query failed at 103a: Query:' . $myquery . "Error:" . mysql_error(), E_USER_ERROR);
+	$result2 = $link->query($query) or trigger_error('Query failed at 103a: Query:' . $myquery . "Error:" . $link->error, E_USER_ERROR);
 
-	if(mysql_num_rows($result2) > 0) {
+	if(mysqli_num_rows($result2) > 0) {
 		header("Cache-Control: no-cache, must-revalidate"); // HTTP/1.1
 		header("Expires: Sat, 26 Jul 1997 05:00:00 GMT"); // Date in the past
 		header('Content-Transfer-Encoding: binary');
@@ -140,6 +142,6 @@ if($row["PermFlag"] == 1) {
 
 }
 
-mysql_close($link);
+mysqli_close($link);
 
 ?>

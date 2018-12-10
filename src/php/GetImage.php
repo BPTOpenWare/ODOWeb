@@ -1,7 +1,4 @@
 <?php
-//GetImage.php
-
-
 /**
  * Copyright (C) 2016  Bluff Point Technologies LLC
  *
@@ -18,24 +15,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+//GetImage.php
+
+include "enc.php";
 
 if((!isset($_GET["ImgID"])) && (!isset($_GET["Name"]))) {
 	header("HTTP/1.0 404 Not Found");
 	exit(1);
 }
 
+$enc = new ourConstants();
 
-define("DBIPADD", "127.0.0.1");
-define("DBUNAME", "TESTACCT");
-define("DBPWORD", "testacct");
-define("DBNAME", "BPTPOINT");
+define("DBIPADD", $enc->getDbipadd());
+define("DBUNAME", $enc->getDbuname());
+define("DBPWORD", $enc->getDbpword());
+define("DBNAME", $enc->getDbname());
 
 
 
-$link = mysql_connect(DBIPADD, DBUNAME, DBPWORD)
-			or die('Could not connect: ' . mysql_error());
+$link = new mysqli(DBIPADD, DBUNAME, DBPWORD, DBNAME);
+
+if($link->connect_errno) {
+	die('Could not connect: ' . $link->connect_errno . ":" . $link->connect_error);
+}
+
 		
-mysql_select_db(DBNAME) or trigger_error('Could not select database');
 
 //ID flag is just used to tell if we have an image.
 $IDFlag = false;
@@ -51,23 +55,24 @@ if(get_magic_quotes_gpc()) {
 	$Rvalue = stripslashes($Rvalue);
 } 
 		
-$Rvalue = mysql_real_escape_string($Rvalue, &$link);
+$Rvalue = $link->real_escape_string($Rvalue);
 
 if($IDFlag) {
+	$Rvalue = intval($Rvalue);
 	$query = "SELECT BImage, PermFlag, ImgID FROM ODOImages WHERE ImgID=" . $Rvalue;
 } else {
 	$query = "SELECT BImage, PermFlag, ImgID FROM ODOImages WHERE Name='" . $Rvalue . "'";
 }
 
-$result = mysql_query($query) or trigger_error('Query failed at 103a: Query:' . $myquery . "Error:" . mysql_error(), E_USER_ERROR);
+$result = $link->query($query) or trigger_error('Query failed at 103a: Query:' . $query . "Error:" . $link->error, E_USER_ERROR);
 
-if(!mysql_num_rows($result)) {
+if(!mysqli_num_rows($result)) {
 	header("HTTP/1.0 404 Not Found");
-	mysql_close($link);
+	$link->close();
 	exit(1);
 } 
 
-$row = mysql_fetch_assoc($result);
+$row = mysqli_fetch_assoc($result);
 
 if($row["PermFlag"] == 1) {
 	include "class.php";
@@ -99,9 +104,9 @@ if($row["PermFlag"] == 1) {
 	
 	$query = "SELECT ODOImages.Name FROM ODOImages, GroupsForImages, ODOGroups, ODOUserGID WHERE ODOUserGID.UID=" . $_SESSION["ODOUserO"]->getUID() . " AND ODOUserGID.GID=ODOGroups.GID AND ODOGroups.GID=GroupsForImages.GID AND GroupsForImages.ImgID=" . $row["ImgID"];
 
-	$result2 = mysql_query($query) or trigger_error('Query failed at 103a: Query:' . $myquery . "Error:" . mysql_error(), E_USER_ERROR);
+	$result2 = $link->query($query) or trigger_error('Query failed at 103a: Query:' . $myquery . "Error:" . $link->error . E_USER_ERROR);
 
-	if(mysql_num_rows($result2) > 0) {
+	if(mysqli_num_rows($result2) > 0) {
 		header("Content-type: image/jpeg");
 		echo $row["BImage"];
 	} else {
@@ -116,6 +121,6 @@ if($row["PermFlag"] == 1) {
 	echo $row["BImage"];
 }
 
-mysql_close($link);
+$link->close();
 
 ?>
