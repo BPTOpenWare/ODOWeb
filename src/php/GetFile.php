@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 //GetImage.php
+require_once "enc.php";
 
 if((!isset($_GET["FID"]))&&(!isset($_POST["FID"])) ) {
 	header("HTTP/1.0 404 Not Found");

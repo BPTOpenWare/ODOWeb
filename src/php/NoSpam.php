@@ -1,5 +1,5 @@
 <?php
-
+require_once "enc.php";
 
 /**
  * Copyright (C) 2016  Bluff Point Technologies LLC
@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-include "enc.php";
+
 
 $enc = new ourConstants();
 
@@ -52,12 +52,14 @@ $img_number = imagecreate(100,25);
 $backcolor = imagecolorallocate($img_number,10,10,55);
 $textcolor = imagecolorallocate($img_number,255,255,255);
 $linecolor = imagecolorallocate($img_number, 128, 255, 0);
+$linecolortwo = imagecolorallocate($img_number, 255, 0, 0);
 imagefill($img_number,0,0,$backcolor);
 imagestring($img_number,5,0,1,$txt,$textcolor);
 imagesetthickness($img_number, 1);
 imageline($img_number, rand(0,50), rand(0,25), rand(75,100), rand(0,25), $linecolor);
 imageline($img_number, rand(25,50), rand(0,25), rand(55,100), rand(0,25), $linecolor);
 imageline($img_number, rand(0,50), rand(0,25), rand(1,100), rand(0,25), $linecolor);
+imageline($img_number, rand(0,50), rand(0,25), rand(0,50), rand(0,25), $linecolortwo);
 session_start();
 
 $link = new mysqli(DBIPADD, DBUNAME, DBPWORD, DBNAME);

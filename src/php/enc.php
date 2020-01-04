@@ -44,6 +44,36 @@ class ourConstants {
 	 */
 	private $dbname = "";
 	
+	/**
+	 * Flag to use DB management of session
+	 * @var unknown $useDBSession
+	 */
+	private $useDBSession = TRUE;
+	
+	/**
+	 * MySql config IP/host
+	 * @var String
+	 */
+	private $dbsessipadd = "";
+	
+	/**
+	 * MySql config username
+	 * @var String
+	 */
+	private $dbsessuname = "";
+	
+	/**
+	 * MySql config password
+	 * @var String
+	 */
+	private $dbsesspword = "";
+	
+	/**
+	 * MySql config DB Name
+	 * @var String
+	 */
+	private $dbsessname = "";
+	
 	function __construct() {
 		
 		$this->aesKey = "REPLACEMEWITHARANDOMKEYOFEQUALLN";
@@ -51,10 +81,15 @@ class ourConstants {
 		//hash settings
 		$this->SHA256h = '$5$rounds=5000$REPLACEMEWITHAHASHSALTKEY$';
 		$this->SHA512h = '$6$rounds=5000$REPLACEMEWITHAHASHSALTKEY$';
-		$this->dbipadd = "127.0.0.1";
+		$this->dbipadd = "mysqlmaster";
 		$this->dbuname = "TESTACCT";
 		$this->dbpword = "testacct";
 		$this->dbname = "BPTPOINT";
+		$this->useDBSession = TRUE;
+		$this->dbsessipadd = "mysqlmaster";
+		$this->dbsessuname = "TESTACCTSESS";
+		$this->dbsesspword = "testacctsess";
+		$this->dbsessname = "BPTPOINTSESS";
 	}
 	
 	public function getAesKey() {
@@ -85,6 +120,26 @@ class ourConstants {
 		return $this->dbname;
 	}
 	
+	public function isUseDBSession() {
+		return $this->useDBSession;	
+	}
+	
+	public function getDbsessipadd() {
+		return $this->dbsessipadd;
+	}
+	
+	public function getDbsessuname() {
+		return $this->dbsessuname;
+	}
+	
+	public function getDbsesspword() {
+		return $this->dbsesspword;
+	}
+	
+	public function getDbsessname() {
+		return $this->dbsessname;
+	}
+	
 	function __wakeup() {
 		$this->aesKey = "REPLACEMEWITHARANDOMKEYOFEQUALLN";
 		$this->SHA256h = '$5$rounds=5000$REPLACEMEWITHAHASHSALTKEY$';
@@ -93,6 +148,10 @@ class ourConstants {
 		$this->dbuname = "TESTACCT";
 		$this->dbpword = "testacct";
 		$this->dbname = "BPTPOINT";
+		$this->dbsessipadd = "127.0.0.1";
+		$this->dbsessuname = "TESTACCTSESS";
+		$this->dbsesspword = "testacctsess";
+		$this->dbsessname = "BPTPOINTSESS";
 		
 	}
 	
@@ -103,6 +162,10 @@ class ourConstants {
 		$this->dbuname = "";
 		$this->dbpword = "";
 		$this->dbname = "";
+		$this->dbsessipadd = "";
+		$this->dbsessuname = "";
+		$this->dbsesspword = "";
+		$this->dbsessname = "";
 		return( array_keys( get_object_vars( $this ) ) );
 	
 	}

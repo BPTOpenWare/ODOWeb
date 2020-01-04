@@ -15,8 +15,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-include 'genericUserObjects.php';
+require_once "enc.php";
+require_once "sessionDBManager.php";
+require_once 'genericUserObjects.php';
 
 //globalref is defined here and assigned when called by ODOSession initialization. 
 //Wakeup will need to reregister each object to this array as they will have 
@@ -1432,7 +1433,9 @@ class ODODB {
 		$this->dbipadd = $enc->getDbipadd();
 		$this->dbuname = $enc->getDbuname();
 		$this->dbpword = $enc->getDbpword();
-		$this->dbname = $enc-getDbname();
+		$this->dbname = $enc->getDbname();
+		
+		$this->mysqli = null;
 		
         global $globalref;
         $globalref[1] = &$this;
@@ -1461,16 +1464,18 @@ class ODODB {
 	function Connect() {
 
 		//we are not using pconnect here for a lot of reasons!
-		$this->mysqli = new mysqli($this->dbipadd, $this->dbuname, $this->dbpword, $this->dbname);
+		if($this->mysqli == null) {
+			$this->mysqli = new mysqli($this->dbipadd, $this->dbuname, $this->dbpword, $this->dbname);
 			
-		if($this->mysqli->connect_errno) {
-			die('Could not connect: ' . $this->mysqli->connect_errno . ':' . $this->mysqli->connect_error);
+			if($this->mysqli->connect_errno) {
+				die('Could not connect: ' . $this->mysqli->connect_errno . ':' . $this->mysqli->connect_error);
+			}
+			
+			if(!$this->mysqli->set_charset("utf8")) {
+				die('Could not set charset!' . $this->mysqli->error);
+			}
+				
 		}
-		
-		if(!$this->mysqli->set_charset("utf8")) {
-			die('Could not set charset!' . $this->mysqli->error);
-		}
-		
 		
 	}
 
@@ -2590,18 +2595,15 @@ class ODOUser {
 				$pg = $_SESSION["ODOSessionO"]->pg;
 				
 				$_SESSION = array();
-				session_destroy();
-				session_start();
-				session_regenerate_id(false);
 				
 				//load system objects
-				$_SESSION["ODOSessionO"] = new ODOSession;
-				$_SESSION["ODOConstantsO"] = new ODOConstants;
+				$_SESSION["ODOSessionO"] = new ODOSession();
+				$_SESSION["ODOConstantsO"] = new ODOConstants();
 				$_SESSION["ODOUserO"] = &$this;
-				$_SESSION["ODOLoggingO"] = new ODOLogging;
-				$_SESSION["ODOErrorO"] = new ODOError;
-				$_SESSION["ODOPageO"] = new ODOPage;
-				$_SESSION["ODOUtil"] = new ODOUtil;
+				$_SESSION["ODOLoggingO"] = new ODOLogging();
+				$_SESSION["ODOErrorO"] = new ODOError();
+				$_SESSION["ODOPageO"] = new ODOPage();
+				$_SESSION["ODOUtil"] = new ODOUtil();
 	
 				$_SESSION["ODOSessionO"]->pg = $pg;
 				
@@ -3419,29 +3421,36 @@ class ODOLogging {
     	//check for remote server settings
     	if(defined("USEREMOTEEMAILSERVER")&&(USEREMOTEEMAILSERVER == 1)) {
     		
-    		$ch = curl_init();
+
+    		$query = "INSERT INTO MailQueue(rcvMail, subject, headers, message, encrypted) values(?,?,?,?,";
     		
-    		$curlPost = "emailto=" . $EmailObj->to . "&emailsubject=";
-    		$curlPost .= $EmailObj->subject . "&emailmessage=" . $EmailObj->message . "&emailheaders=" . $EmailObj->headers;
-    		$curlPost .= "&ourKey=" . REMOTESERVERKEY;
-    		
-    		if(defined("REMOTEEMAILSERVERADDPARMS")&&(strlen(REMOTEEMAILSERVERADDPARMS)>0)) {
-    			$curlPost .= "&" . REMOTEEMAILSERVERADDPARMS;
+    		if(defined("REMOTEEMAILENCRYPTED")&&(REMOTEEMAILENCRYPTED == 1)) {
+    			
+    			$query .= "1)";
+    			
+    		} else {
+    			
+    			$query .= "0)";
+    			
     		}
     		 
-    		curl_setopt($ch, CURLOPT_URL,REMOTEEMAILSERVERURL);
-    		curl_setopt($ch, CURLOPT_POST, 1);
-    		curl_setopt($ch, CURLOPT_POSTFIELDS,$curlPost);
-    		     		 
-    		// receive server response ...
-    		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    		 
-    		$server_output = curl_exec ($ch);
-    		 
-    		curl_close ($ch);
     		
-    		if(!$server_output) {
-    			$Comment = "Error dropping an e-mail to bpt" . $curlPost;
+    		$mStm = $GLOBALS['globalref'][1]->prepare($query);
+    		
+    		$mStm->bind_param("ssss", $EmailObj->to, $EmailObj->subject, $EmailObj->headers, $EmailObj->message);
+    		 
+    		if(!$mStm->execute ()) {
+    		
+    			$Comment = "Error dropping an e-mail to MailQueue";
+    		
+    			$this->LogEvent("EMAILERROR", $Comment, 100);
+    		
+    			return false;
+    		}
+
+    		if($mStm->affected_rows == 0) {
+    				
+    			$Comment = "Error dropping an e-mail to MailQueue no rows inserted";
     		
     			$this->LogEvent("EMAILERROR", $Comment, 100);
     		
@@ -3456,7 +3465,6 @@ class ODOLogging {
     		} 
     		
     	}
-
     	
 		return true;
          
@@ -3872,8 +3880,9 @@ class ODOUtil {
 	}
 
 	function isMcryptAvailable() {
-		if((function_exists('mcrypt_module_open'))&&(defined('MCRYPT_RIJNDAEL_128'))&&(defined('MCRYPT_MODE_CBC'))&&(defined('MCRYPT_DEV_RANDOM'))&&(defined('ENCRYPTODOUSER'))&&(ENCRYPTODOUSER == 1)) {
-			return 1;
+		if((function_exists('sodium_pad'))&&(function_exists('sodium_crypto_secretbox'))&&(defined('SODIUM_LIBRARY_VERSION'))&&
+				(defined('SODIUM_CRYPTO_SECRETBOX_NONCEBYTES'))&&(defined('ENCRYPTODOUSER'))&&(ENCRYPTODOUSER == 1)) {
+		return 1;
 		} else {
 			return 0;
 		}
@@ -3890,33 +3899,25 @@ class ODOUtil {
 	*data and iv
 	********************************************/
 	function ODOEncrypt($encData) {
+
 		
-		if((function_exists('mcrypt_module_open'))&&(defined('MCRYPT_RIJNDAEL_256'))&&(defined('MCRYPT_MODE_CFB'))&&(defined('MCRYPT_DEV_RANDOM'))&&(defined('ENCRYPTODOUSER'))&&(ENCRYPTODOUSER == 1)) {
-			/* Open the cipher */
-			$td = mcrypt_module_open(MCRYPT_RIJNDAEL_256, '', MCRYPT_MODE_CFB, '');
+		if((function_exists('sodium_pad'))&&(function_exists('sodium_crypto_secretbox'))&&(defined('SODIUM_LIBRARY_VERSION'))&&
+				(defined('SODIUM_CRYPTO_SECRETBOX_NONCEBYTES'))&&(defined('ENCRYPTODOUSER'))&&(ENCRYPTODOUSER == 1)) {
 
-			/* Create the IV and determine the keysize length, use MCRYPT_RAND
-			* on Windows instead */
-			$ks = mcrypt_enc_get_key_size($td);
-
-			/* Create key */
-			$key = substr(md5($this->aesKey), 0, $ks);
 
 			/* Intialize encryption */
 			if($encData->useODOUserIV) {
 				if(strlen($_SESSION["ODOUserO"]->getUserIV())>0) {
 					$encData->iv = $_SESSION["ODOUserO"]->getUserIV();
 				} else {
-					$GLOBALS['globalref'][4]->LogEvent("MCRYPTNOTICE", "Encryption was requested with an empty IV string.", 5);
+					$GLOBALS['globalref'][4]->LogEvent("SODIUMNOTICE", "Encryption was requested with an empty IV string.", 5);
 				}
 			} else {
 				if(!strlen($encData->iv)>0) {
-					$encData->iv = mcrypt_create_iv(mcrypt_enc_get_iv_size($td), MCRYPT_DEV_RANDOM);
+					$encData->iv = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
 				} 
 			}
 		
-			
-			mcrypt_generic_init($td, $key, $encData->iv);
 			
 			//order a-z so iv works correctly
 			//if we are in the wrong order the decryption will fail
@@ -3925,14 +3926,11 @@ class ODOUtil {
 			/* Encrypt data */
 			foreach($encData->decArray as $Name=>$Value) {
 				
-				$encData->encArray[$Name] = mcrypt_generic($td, $Value);
+				$padded_message = sodium_pad($Value, 16);
+				$encData->encArray[$Name] = sodium_crypto_secretbox($padded_message, $encData->iv, $this->aesKey);
 
 			}
-			
-			/* Terminate encryption handler */
-			mcrypt_generic_deinit($td);
 
-			mcrypt_module_close($td);
 			
 			return $encData;
 
@@ -3960,36 +3958,26 @@ class ODOUtil {
 	*decrypted array populated.
 	***************************************************/
 	function ODODecrypt($encData) {
-		if((function_exists('mcrypt_module_open'))&&(defined('MCRYPT_RIJNDAEL_256'))&&(defined('MCRYPT_MODE_CFB'))&&(defined('MCRYPT_DEV_RANDOM'))&&(defined('ENCRYPTODOUSER'))&&(ENCRYPTODOUSER == 1)) {
-	
-			/* Open the cipher */
-			$td = mcrypt_module_open(MCRYPT_RIJNDAEL_256, '', MCRYPT_MODE_CFB, '');
+		
+		
+		if((function_exists('sodium_crypto_secretbox_open'))&&(function_exists('sodium_unpad'))&&(defined('SODIUM_LIBRARY_VERSION'))&&
+				(defined('ENCRYPTODOUSER'))&&(ENCRYPTODOUSER == 1)) {
 
-			/* Create the IV and determine the keysize length */
-			$ks = mcrypt_enc_get_key_size($td);
-
-			/* Create key */
-			$key = substr(md5($this->aesKey), 0, $ks);
-
-			/* Initialize encryption module for decryption */
-			$iv = "";
 			
 			if($encData->useODOUserIV) {
 				if(strlen($_SESSION["ODOUserO"]->getUserIV())>0) {
 					$iv = $_SESSION["ODOUserO"]->getUserIV();
 					$encData->iv = $iv;
 				} else {
-					$GLOBALS['globalref'][4]->LogEvent("MCRYPTNOTICE", "Decryption was requested with an empty IV string.", 5);
+					$GLOBALS['globalref'][4]->LogEvent("SODIUMNOTICE", "Decryption was requested with an empty IV string.", 5);
 				}
 			} else {
 				if(strlen($encData->iv)>0) {
 					$iv = $encData->iv;
 				} else {
-					$GLOBALS['globalref'][4]->LogEvent("MCRYPTNOTICE", "Decryption was requested with an empty IV string.", 5);
+					$GLOBALS['globalref'][4]->LogEvent("SODIUMNOTICE", "Decryption was requested with an empty IV string.", 5);
 				}
 			}
-
-			mcrypt_generic_init($td, $key, $iv);
 			
 			//order a-z so iv works correctly
 			//if we are in the wrong order the decryption will fail
@@ -3998,12 +3986,10 @@ class ODOUtil {
 			/* Decrypt encrypted string */
 			foreach($encData->encArray as $Name=>$Value) {
 		
-				$encData->decArray[$Name] = rtrim(mdecrypt_generic($td, $Value), "\0");
+				$paddedMsg = sodium_crypto_secretbox_open($Value, $encData->iv, $this->aesKey);
+				$encData->decArray[$Name] = sodium_unpad($paddedMsg, 16);
 			}
-			
-			/* Terminate decryption handle and close module */
-			mcrypt_generic_deinit($td);
-			mcrypt_module_close($td);
+
 		
 			return $encData;
 			
@@ -4066,12 +4052,14 @@ class EncryptedData {
 	var $encArray;
 	var $decArray;
 	var $sleepDec;
+	var $publicData;
 	var $iv;
 	var $useODOUserIV;
 	
 	//Constructor
 	function __construct() {
 		$this->iv = "";
+		$this->publicData = "";
 		$this->encArray = array();
 		$this->decArray = array();
 		//turn on to allow decripted data to persist between requests
