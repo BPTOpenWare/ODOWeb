@@ -97,6 +97,8 @@ class ourConstants {
 	
 	private $sendgridFromName = "";
 	
+	private $useMobileRedirect = TRUE;
+
 	function __construct() {
 		
 		$this->aesKey = "REPLACEMEWITHARANDOMKEYOFEQUALLN";
@@ -118,6 +120,7 @@ class ourConstants {
 		$this->sendgridAPI = "";
 		$this->sendgridFromEmail = "nowhere@nowhere.net";
 		$this->sendgridFromName = "No Where";
+		$this->useMobileRedirect = TRUE;
 	}
 	
 	public function getAesKey() {
@@ -188,6 +191,10 @@ class ourConstants {
 		return $this->sendgridFromName;
 	}
 	
+	public function getUseMobileRedirect() {
+		return $this->useMobileRedirect;
+	}
+
 	function __wakeup() {
 		$this->aesKey = "REPLACEMEWITHARANDOMKEYOFEQUALLN";
 		$this->SHA256h = '$5$rounds=5000$REPLACEMEWITHAHASHSALTKEY$';
